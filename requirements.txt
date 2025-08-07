@@ -1,0 +1,12 @@
+Flask
+Flask-SQLAlchemy
+Flask-JWT-Extended
+Flask-Cors
+PyMySQL
+Flasgger
+python-dotenv
+passlib
+celery
+redis
+firebase-admin
+pytz
