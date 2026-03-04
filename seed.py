@@ -1,7 +1,7 @@
 from api_app import create_app, db
 from api_app.modules.auth.auth_user_model import AuthUser
-from api_app.modules.product.models.aliquota import Aliquota
-from api_app.modules.product.models.products import Produtos
+from api_app.modules.product.models.product_tax_info_br_model import Aliquota
+from api_app.modules.product.models.product_model import Produtos
 from passlib.hash import bcrypt
 
 app = create_app()

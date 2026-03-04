@@ -2,6 +2,7 @@ Flask
 Flask-SQLAlchemy
 Flask-JWT-Extended
 Flask-Cors
+flask-migrate
 PyMySQL
 Flasgger
 python-dotenv

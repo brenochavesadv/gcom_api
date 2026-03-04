@@ -1,13 +1,54 @@
+import os
+import json
+import base64
 import firebase_admin
 from firebase_admin import credentials, auth
-import os
+from flask import current_app
 
-# Get the directory where this script is located
-current_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(current_dir, "firebase_config.json")
 
-cred = credentials.Certificate(config_path)
-firebase_app = firebase_admin.initialize_app(cred)
+def init_app(app):
+    """Initialize Firebase admin SDK using Flask `app` config or environment."""
+
+    creds = None
+    cred_json = os.environ.get("INFO_FIREBASE")
+    cred_b64 = os.environ.get("FIREBASE_COMMERCIAL_B64")
+
+    if cred_json:
+        cred_json_path = os.path.expanduser(cred_json)
+        cred_json_path = os.path.abspath(cred_json_path)
+        if os.path.exists(cred_json_path):
+            with open(cred_json_path, "r", encoding="utf-8") as f:
+                creds = json.load(f)
+        else:
+            try:
+                creds = json.loads(cred_json)
+            except Exception:
+                creds = None
+
+    if creds is None and cred_b64:
+        try:
+            decoded = base64.b64decode(cred_b64)
+            creds = json.loads(decoded)
+        except Exception:
+            creds = None
+
+    if creds is None:
+        raise RuntimeError("Firebase credentials not found.")
+
+    # Extract project_id and set GOOGLE_CLOUD_PROJECT if missing
+    project_id = creds.get("project_id") if isinstance(creds, dict) else None
+    if project_id:
+        os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
+
+    # Initialize firebase admin if not already
+    try:
+        firebase_admin.get_app()
+    except ValueError:
+        try:
+            cred = credentials.Certificate(creds)
+            firebase_admin.initialize_app(cred)
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize Firebase admin SDK: {e}")
 
 def verify_firebase_token(id_token):
     """

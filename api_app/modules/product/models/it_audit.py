@@ -4,7 +4,7 @@ class ItAudit(db.Model):
     __bind_key__ = 'product'  # SQLAlchemy to use the 'product' bind
     __tablename__ = "it_audit"
 
-    id = db.Column(db.Integer, primary_key=True)
+    uid = db.Column(db.Integer, primary_key=True)
     instit = db.Column(db.Integer, primary_key=False)
     idprod = db.Column(db.Integer, primary_key=False)
     codprod = db.Column(db.Integer, primary_key=False)

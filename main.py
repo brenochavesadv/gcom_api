@@ -1,4 +1,8 @@
-from flask import Flask
+# Keep `main.py` focused on the application factory and registration.
+# Do not create a module-level `app` here to avoid import-time side effects.
+
+from flask import Flask, app
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
@@ -26,57 +30,69 @@ jwt = JWTManager()
 swagger = Swagger(template=swagger_template) # adds authorization header to all endpoints 
 #swagger = Swagger()
 
+import sys
+import os
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object("config.Config")
+
+    # Ensure api_app is discoverable
+    sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
     CORS(app)
     db.init_app(app)
     jwt.init_app(app)
     swagger.init_app(app)
+    migrate = Migrate(app, db)
     
-    # Inicializa o Firebase
+    from api_app.modules.person.routes.address_route import address_bp
+    app.register_blueprint(address_bp, url_prefix='/address')
+
+    from api_app.modules.country.country_route import country_bp
+    app.register_blueprint(country_bp, url_prefix='/country')
+
+    from api_app.modules.utils.error_codes_route import errors_bp
+    app.register_blueprint(errors_bp, url_prefix='/errors')
+
+    # Initialize Firebase admin SDK (reads env or security file)
+    from api_app.modules.auth_firebase.firebase import init_app as init_firebase
+    init_firebase(app)
 
     from api_app.modules.auth_firebase.firebase_routes import firebase_bp
     app.register_blueprint(firebase_bp, url_prefix='/firebase')
 
-    from api_app.modules.product.routes.aliquota import aliquota_bp
-    app.register_blueprint(aliquota_bp, url_prefix='/aliquota')
+    from test_health import health_bp
+    app.register_blueprint(health_bp, url_prefix='/health')
 
-    from api_app.modules.product.routes.fabpro import fabpro_bp
-    app.register_blueprint(fabpro_bp, url_prefix='/fabpro')
+    from api_app.modules.person.routes.mail_route import mail_bp
+    app.register_blueprint(mail_bp, url_prefix='/mail')
+    
+    from api_app.modules.person.routes.phone_route import phone_bp
+    app.register_blueprint(phone_bp, url_prefix='/phone')
 
-    from api_app.modules.entity.entity_routes import entity_bp
-    app.register_blueprint(entity_bp, url_prefix='/entity')
-    
-    from api_app.modules.product.routes.it_audit import it_audit_bp
-    app.register_blueprint(it_audit_bp, url_prefix='/it_audit')
-    
-    from api_app.modules.product.routes.prod_grp import prod_grp_bp
-    app.register_blueprint(prod_grp_bp, url_prefix='/prod_grp')
-    
-    from api_app.modules.product.routes.prod_itens import prod_itens_bp
-    app.register_blueprint(prod_itens_bp, url_prefix='/prod_itens')
-    
-    from api_app.modules.product.routes.products import products_bp
-    app.register_blueprint(products_bp, url_prefix='/products')
-    
-    from api_app.modules.person.routes.person_control import person_control_bp
-    app.register_blueprint(person_control_bp, url_prefix='/personcontrol')
-    
-    from api_app.modules.person.routes.person_natural import person_natural_bp
-    app.register_blueprint(person_natural_bp, url_prefix='/personnatural')
+    from api_app.modules.organization.organization_route import organization_bp
+    app.register_blueprint(organization_bp, url_prefix='/organization')
 
     from api_app.modules.acl.acl_decorator import permissions_bp
     app.register_blueprint(permissions_bp, url_prefix='/permissions')
+
+    from api_app.modules.person.routes.person_route import person_bp
+    app.register_blueprint(person_bp, url_prefix='/person')
     
-    from api_app.modules.product.routes.unidades import unidades_bp
-    app.register_blueprint(unidades_bp, url_prefix='/unidades')
+    from api_app.modules.person.routes.person_natural_route import person_natural_bp
+    app.register_blueprint(person_natural_bp, url_prefix='/personnatural')
+
+    from api_app.modules.person.routes.person_legal_route import person_legal_bp
+    app.register_blueprint(person_legal_bp, url_prefix='/personlegal')
+
+    from api_app.modules.product.routes.product_route import product_bp
+    app.register_blueprint(product_bp, url_prefix='/product')    
+ 
+    from api_app.modules.auth.users_route import users_bp
+    app.register_blueprint(users_bp, url_prefix='/user')
     
-    from api_app.modules.person.routes.users import users_bp
-    app.register_blueprint(users_bp, url_prefix='/users')
-    
-    from api_app.modules.person.routes.users_group import users_group_bp
-    app.register_blueprint(users_group_bp, url_prefix='/usersgroup')
+    from api_app.modules.auth.users_group_route import users_group_bp
+    app.register_blueprint(users_group_bp, url_prefix='/usergroup')
 
     return app

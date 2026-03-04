@@ -1,19 +1,20 @@
 
 from main import db
 
-class Role(db.Model):
-    __tablename__ = "roles"
-    id = db.Column(db.Integer, primary_key=True)
+class AclRoles(db.Model):
+    __tablename__ = "acl_roles"
+    uid = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
 
-    permissions = db.relationship('Permission', secondary='role_permissions', backref='roles')
+    permissions = db.relationship('AclPermissions', secondary='acl_role_permissions', backref='roles')
 
-class Permission(db.Model):
-    __tablename__ = "permissions"
-    id = db.Column(db.Integer, primary_key=True)
+class AclPermissions(db.Model):
+    __tablename__ = "acl_permissions"
+    uid = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
 
-class RolePermission(db.Model):
-    __tablename__ = "role_permissions"
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), primary_key=True)
-    permission_id = db.Column(db.Integer, db.ForeignKey('permissions.id'), primary_key=True)
+class AclRolePermissions(db.Model):
+    __tablename__ = "acl_role_permissions"
+    uid = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('acl_roles.uid'), primary_key=True)
+    permission_id = db.Column(db.Integer, db.ForeignKey('acl_permissions.uid'), primary_key=True)

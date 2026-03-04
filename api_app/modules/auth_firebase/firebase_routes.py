@@ -15,8 +15,8 @@ def protected():
         return jsonify({'error': 'Invalid or revoked token'}), 401
 
     # Access user data from the decoded token
-    user_id = decoded_token['uid']
-    return jsonify({'message': 'Valid token', 'user_id': user_id}), 200
+    user_uid = decoded_token['uid']
+    return jsonify({'message': 'Valid token', 'user_uid': user_uid}), 200
 
 @firebase_bp.route('/user/<uid>', methods=['GET'])
 def get_user_info(uid):
