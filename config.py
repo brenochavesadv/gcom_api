@@ -5,6 +5,7 @@ def db_info():
     """get db info from json file"""
 
     json_url = os.environ.get('INFO_DB')
+    print("INFO_DB environment variable:", json_url)
 
     if json_url:
         path = os.path.expanduser(json_url)
@@ -26,14 +27,12 @@ def db_info():
 
     return key, url
 
-
 class Config:
-
-    FLASK_ENV = os.getenv("FLASK_ENV", "production")
 
     info = db_info()
     if info:
         key, url = info
+        print("Database information loaded successfully: {url}".format(url=url))
         SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{key}@{url}"
     else:
         raise RuntimeError("Database information not loaded.")

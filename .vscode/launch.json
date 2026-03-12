@@ -1,0 +1,20 @@
+{
+    "name": "Python: Flask",
+    "type": "python",
+    "request": "launch",
+    "module": "flask",
+    "env": {
+        "FLASK_DEBUG": "1",
+        "FLASK_APP": "main:create_app",
+        "FLASK_ENV": "development",
+        "INFO_DB": "security/db_commerciall.json",
+        //"INFO_DB": "security/db_development.json",
+        "INFO_FIREBASE": "security/firebase_commerciall.json"
+    },
+    "args": [
+        "run",
+        "--no-debugger",
+        "--no-reload"
+    ],
+    "jinja": true
+}

@@ -10,11 +10,11 @@ class Address(db.Model):
     __tablename__ = "enderecos"
 
     id = db.Column('enderecos_id', db.Integer, primary_key=True)
-    uid = db.Column('enderecos_uid', db.String(36), unique=True, nullable=False, default=uuid)  # UUID for external reference
+    uid = db.Column(db.String(36), unique=True, nullable=False)  # UUID for external reference
     is_active = db.Column(db.SmallInteger, nullable=False, default=0, comment='1:active 0:not')
     is_main = db.Column(db.SmallInteger, nullable=False, default=0, comment='1:main address 0:not')
     person_id_fk = db.Column('pescod_id_fk', db.Integer, db.ForeignKey('pescod.pescod_id'))
-    person_uid_fk = db.Column('pescod_uid_fk', db.String(36), db.ForeignKey('pescod.pescod_uid'))
+    person_uid_fk = db.Column(db.String(36), db.ForeignKey('pescod.uid'))
     address_label = db.Column(db.String(20), nullable=True, comment='Label for the address, e.g., "Home", "Office"')
     suffix = db.Column('logradouros_id_fk', db.String(10), nullable=False, comment='Street, Avenue, etc. suffix identifier')
     address = db.Column('logradouro', db.String(100), nullable=True)
@@ -30,7 +30,7 @@ class Address(db.Model):
     created_at = db.Column('data_criacao', db.TIMESTAMP(timezone=True), default=datetime.utcnow, nullable=True)
     updated_at = db.Column('data_atualizacao', db.TIMESTAMP(timezone=True), nullable=True)
 
-    person = relationship("Person", back_populates="address")
+    person = relationship("Person", back_populates="address", foreign_keys=[person_id_fk])
 
     def to_dict(self):
         """Convert model to dictionary using direct attribute access"""

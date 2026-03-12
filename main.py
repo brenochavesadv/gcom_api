@@ -49,8 +49,8 @@ def create_app():
     from api_app.modules.person.routes.address_route import address_bp
     app.register_blueprint(address_bp, url_prefix='/address')
 
-    from api_app.modules.country.country_route import country_bp
-    app.register_blueprint(country_bp, url_prefix='/country')
+    #from api_app.modules.country.country_route import country_bp
+    #app.register_blueprint(country_bp, url_prefix='/country')
 
     from api_app.modules.utils.error_codes_route import errors_bp
     app.register_blueprint(errors_bp, url_prefix='/errors')
@@ -89,10 +89,10 @@ def create_app():
     from api_app.modules.product.routes.product_route import product_bp
     app.register_blueprint(product_bp, url_prefix='/product')    
  
-    from api_app.modules.auth.users_route import users_bp
-    app.register_blueprint(users_bp, url_prefix='/user')
+    from api_app.modules.users.users_route import users_bp
+    app.register_blueprint(users_bp, url_prefix='/users')
     
-    from api_app.modules.auth.users_group_route import users_group_bp
-    app.register_blueprint(users_group_bp, url_prefix='/usergroup')
+    from api_app.modules.users.users_group_route import users_group_bp
+    app.register_blueprint(users_group_bp, url_prefix='/usersgroup')
 
     return app

@@ -7,13 +7,14 @@ class PersonNatural(db.Model):
     #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
     __tablename__ = "pesfis"
 
-    person_natural_uid = db.Column("pesfis_id", db.Integer, primary_key=True)
+    id = db.Column("pesfis_id", db.Integer, primary_key=True)
+    uid = db.Column(db.String(36), unique=True)  # UUID for external reference
     person_id_fk = db.Column("pescod_id_fk", db.Integer, db.ForeignKey('pescod.pescod_id'))
-    person_uid_fk = db.Column("pescod_uid_fk", db.String(36), db.ForeignKey('pescod.pescod_uid'))
+    person_uid_fk = db.Column(db.String(36), db.ForeignKey('pescod.uid'))
     id_card = db.Column("identidade", db.String(25)) 
     id_issuer = db.Column("emissor_identidade", db.String(15))
-    birth_country = db.Column("birth_country", db.String(60))
-    birth_city = db.Column("birth_city", db.String(80))
+    birth_country = db.Column(db.String(60))
+    birth_city = db.Column(db.String(80))
     birth_date = db.Column("data_de_nascimento", db.Date)
     pronoun = db.Column("tratam", db.Integer)
     nickname = db.Column("apelido", db.String(30))
@@ -42,14 +43,13 @@ class PersonNatural(db.Model):
     spouse_incomes = db.Column("rendaconj", db.Numeric)
     spouse_phone = db.Column("telconj", db.String(15))
     spouse_email = db.Column("mailconj", db.String(40))
-
-    # relationship
-    person = relationship("Person", back_populates="person_natural")
+    person = relationship("Person", back_populates="person_natural", foreign_keys=[person_uid_fk])
 
     def to_dict(self):
         """Convert model to dictionary using direct attribute access"""
         result = {
-            'person_natural_uid': self.person_natural_uid,
+            'id': self.id,
+            'uid': self.uid,
             'person_id_fk': self.person_id_fk,
             'person_uid_fk': self.person_uid_fk,
             'id_card': self.id_card if self.id_card is not None else "",
@@ -110,6 +110,9 @@ class PersonNatural(db.Model):
         profession = data.get("profession") or {}
         family = data.get("family") or {}
         person_natural = PersonNatural(
+            id=data.get("id"),
+            uid=data.get("uid"),
+            person_id_fk=data.get("person_id_fk"),
             person_uid_fk=person_uid,
             id_card=data.get("id_card"),
             id_issuer=data.get("id_issuer"),

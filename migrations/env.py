@@ -20,7 +20,7 @@ logger = logging.getLogger('alembic.env')
 # Ensure all models are imported so their Table objects register and binds populate
 # Import models for the default (main) bind
 from api_app.modules.acl.acl_models import AclRoles, AclPermissions, AclRolePermissions
-from api_app.modules.auth.users_group_model import UsersGroup
+from api_app.modules.users.users_group_model import UsersGroup
 from api_app.modules.auth.users_model import Users
 from api_app.modules.country.country_model import Country
 from api_app.modules.organization.organization_model import Organization

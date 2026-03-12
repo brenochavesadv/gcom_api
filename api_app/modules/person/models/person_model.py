@@ -7,9 +7,10 @@ class Person(db.Model):
     #__bind_key__ = 'main'
     __tablename__ = "pescod"
 
-    person_id = db.Column('pescod_id', db.Integer, primary_key=True)
-    person_uid = db.Column('pescod_uid', db.String(36), unique=True, nullable=False)
-    organization_uid_fk = db.Column('instit_id_fk', db.Integer, db.ForeignKey('instit.instit_id')) # the uid for the main organization
+    id = db.Column('pescod_id', db.Integer, primary_key=True)
+    uid = db.Column(db.String(36), unique=True, nullable=False)
+    main_organization_id_fk = db.Column('instit_id_fk', db.Integer, db.ForeignKey('instit.instit_id')) # the uid for the main organization
+    main_organization_uid_fk = db.Column(db.String(36), db.ForeignKey('instit.uid')) # the uid for the main organization
     person_type = db.Column('tipo', db.Integer)
     is_active = db.Column('sit', db.Integer)
     is_supplier = db.Column('forn', db.Integer)
@@ -21,19 +22,22 @@ class Person(db.Model):
     balance = db.Column('saldo', db.Numeric(10, 2))
     created_at = db.Column('data_criacao', db.TIMESTAMP(timezone=True))
     updated_at = db.Column('data_atualizacao', db.TIMESTAMP(timezone=True))
+    phone = relationship("Phone", back_populates="person", lazy='select', foreign_keys="[Phone.person_uid_fk]")
+    mail = relationship("Mail", back_populates="person", lazy='select', foreign_keys="[Mail.person_uid_fk]")
+    address = relationship("Address", back_populates="person", lazy='select', foreign_keys="[Address.person_uid_fk]")
+    person_natural = relationship("PersonNatural", back_populates="person", uselist=False, foreign_keys="[PersonNatural.person_uid_fk]")
+    person_legal = relationship("PersonLegal", back_populates="person", uselist=False, foreign_keys="[PersonLegal.person_uid_fk]")
+    users = relationship("Users", back_populates="person", lazy='select', foreign_keys="[Users.person_uid_fk]")
+    organization = relationship("Organization", back_populates="person", foreign_keys=[main_organization_uid_fk])
 
-    phone = relationship("Phone", back_populates="person", lazy='select')
-    mail = relationship("Mail", back_populates="person", lazy='select')
-    address = relationship("Address", back_populates="person", lazy='select')
-    person_natural = relationship("PersonNatural", back_populates="person", uselist=False)
-    person_legal = relationship("PersonLegal", back_populates="person", uselist=False)
     #pronoun = relationship("Pronoun", back_populates="persons", lazy='select')
 
     def to_dict(self):
         return {
-            'person_id': self.person_id,
-            'person_uid': self.person_uid,
-            'organization_uid_fk': self.organization_uid_fk,
+            'id': self.id,
+            'uid': self.uid,
+            'main_organization_id_fk': self.main_organization_id_fk,
+            'main_organization_uid_fk': self.main_organization_uid_fk,
             'person_type': self.person_type,
             'is_active': bool(self.is_active) if self.is_active == 1 else False,
             'is_supplier': bool(self.is_supplier) if self.is_supplier is not None else False,
@@ -51,9 +55,10 @@ class Person(db.Model):
     @staticmethod
     def person_data(data):
         person = Person(
-            person_id=data.get("person_id"),
-            person_uid=data.get("person_uid"),
-            organization_uid_fk=data.get("organization_uid_fk"),
+            id=data.get("id"),
+            uid=data.get("uid"),
+            main_organization_id_fk=data.get("main_organization_id_fk"),
+            main_organization_uid_fk=data.get("main_organization_uid_fk"),
             person_type=data.get("person_type"),
             is_active=data.get("is_active"),
             is_supplier=data.get("is_supplier"),

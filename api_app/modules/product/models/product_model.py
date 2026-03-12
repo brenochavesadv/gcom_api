@@ -1,19 +1,21 @@
 from main import db
 from datetime import datetime
 from sqlalchemy.orm import relationship
+from .product_expiry_model import ProductExpiry
 
 class Product(db.Model):
+    __bind_key__ = 'sales'
     __tablename__ = "produtos"
 
-    product_uid = db.Column("produtos_id", db.Integer, primary_key=True, autoincrement=True)
-    organization_uid_fk = db.Column("instit_matriz_id_fk", db.Integer, nullable=False, default=0)
+    id = db.Column("produtos_id", db.Integer, primary_key=True, autoincrement=True)
+    uid = db.Column(db.String(36), unique=True)
+    main_organization_id_fk = db.Column("instit_matriz_id_fk", db.Integer, nullable=False, default=0)
+    main_organization_uid_fk = db.Column("instit_matriz_uid_fk", db.String(36), nullable=False, default=0)
     is_active = db.Column("ativo", db.Integer, nullable=True, default=1)
     internal_code = db.Column("codprod", db.Integer, nullable=False, default=0)
     barcode = db.Column("codbarra", db.String(25), nullable=True)
     description = db.Column("descr", db.String(60), nullable=False, default='')
     especification = db.Column("descres", db.String(150), nullable=True)
-    # Replace FK with plain Integer if unidades is in another database
-    # unit_uid_fk = db.Column("und", db.Integer, db.ForeignKey('unidades.unidades_id'), nullable=False, default=1)
     unit_uid_fk = db.Column("und", db.Integer, nullable=False, default=1)
     product_group_uid_fk = db.Column("prod_grp_id_fk", db.Integer, nullable=False, default=1)
     product_group_lv1_uid = db.Column("prod_grp_nv1id", db.Integer, nullable=True, default=0)
@@ -44,8 +46,10 @@ class Product(db.Model):
 
     def to_dict(self):
         return {
-            "product_uid": self.product_uid,
-            "organization_uid_fk": self.organization_uid_fk,
+            "id": self.id,
+            "uid": self.uid,
+            "main_organization_id_fk": self.main_organization_id_fk,
+            "main_organization_uid_fk": self.main_organization_uid_fk,
             "is_active": True if self.is_active == 2 else False,
             "internal_code": self.internal_code,
             "barcode": self.barcode,
@@ -75,8 +79,10 @@ class Product(db.Model):
     @staticmethod
     def create(**kw):
         return Product(
-            product_uid=kw.get("product_uid"),
-            organization_uid_fk=kw.get("organization_uid_fk"),
+            id=kw.get("id"),
+            uid=kw.get("uid"),
+            main_organization_id_fk=kw.get("main_organization_id_fk"),
+            main_organization_uid_fk=kw.get("main_organization_uid_fk"),
             is_active=kw.get("is_active"),
             internal_code=kw.get("internal_code"),
             barcode=kw.get("barcode"),

@@ -17,7 +17,7 @@ from api_app.modules.person.models import person_model
 person_natural_bp = Blueprint("personnatural", __name__)
 
 @person_natural_bp.route("/list", methods=["GET"])
-@firebase_auth_required
+#@firebase_auth_required
 @swag_from(person_natural_docs["list_person_natural"])
 def list_person_natural():
     return get_person(all_data=True)

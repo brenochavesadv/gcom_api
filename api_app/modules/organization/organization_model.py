@@ -1,38 +1,46 @@
 from main import db
+from sqlalchemy.orm import relationship
 
 class Organization(db.Model):
     #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
     __tablename__ = "instit"
 
-    id = db.Column("id", db.Integer, primary_key=True)
-    organization_uid = db.Column("instit_id", db.Integer, primary_key=True)
-    organization_main_uid = db.Column("instit_matriz_id", db.Integer)
+    id = db.Column("instit_id", db.Integer, primary_key=True)
+    uid = db.Column(db.String(36), unique=True, nullable=False)
+    main_organization_id = db.Column("instit_matriz_id", db.Integer)
+    main_organization_uid = db.Column(db.String(36))
     is_active = db.Column("ativo", db.Integer)    
     name = db.Column("nome", db.String(100))
     phone = db.Column("telefone", db.String(20))
-    mail = db.Column("email", db.String(100))
-    site = db.Column("site", db.String(100))
-    address = db.Column("endereco", db.String(150))
-    address_number = db.Column("numero", db.String(20))
-    address_complement = db.Column("complemento", db.String(50))
-    neighborhood = db.Column("bairro", db.String(70))
-    city = db.Column("cidade", db.String(70))
-    state = db.Column("estado", db.String(2))
-    zip_code = db.Column("cep", db.String(10))
-    country = db.Column("pais", db.String(3))
-    instagram = db.Column("instagram", db.String(50))
-    facebook = db.Column("facebook", db.String(50))
-    picture = db.Column("foto", db.String(30)) 
-    slogan = db.Column("slogan", db.String(100))
+    mail = db.Column(db.String(60))
+    site = db.Column(db.String(60))
+    address = db.Column(db.String(80))
+    address_number = db.Column(db.String(10))
+    address_complement = db.Column(db.String(30))
+    neighborhood = db.Column(db.String(50))
+    city = db.Column(db.String(50))
+    state = db.Column(db.String(2))
+    zip_code = db.Column(db.String(12))
+    country = db.Column(db.String(3))
+    instagram = db.Column(db.String(50))
+    facebook = db.Column(db.String(50))
+    picture = db.Column(db.String(30)) 
+    slogan = db.Column(db.String(60))
     active_modules = db.Column("modulos", db.String(100))
-    created_at = db.Column("data_criacao", db.DateTime)
-    updated_at = db.Column("data_atualizacao", db.DateTime)
+    sync_status = db.Column(db.String(10))
+    created_at = db.Column(db.DateTime)
+    updated_at = db.Column(db.DateTime)
+
+    users = relationship("Users", back_populates="organization", lazy='select', foreign_keys="Users.default_organization_uid_fk")
+    users_group = relationship("UsersGroup", back_populates="organization", lazy='select', foreign_keys="UsersGroup.organization_uid_fk")
+    person = relationship("Person", back_populates="organization", lazy='select', foreign_keys="Person.main_organization_uid_fk")
 
     def to_dict(self):
         result = {
             'id': self.id,
-            'organization_uid': str(self.organization_uid),
-            'organization_main_uid': str(self.organization_main_uid),
+            'uid': self.uid,
+            'main_organization_id': self.main_organization_id,
+            'main_organization_uid': self.main_organization_uid,
             'is_active': bool(self.is_active) if self.is_active == 1 else False,
             'name': self.name,
             'phone': self.phone,

@@ -7,13 +7,13 @@ class ProductExpiry(db.Model):
     __tablename__ = "product_expiry"
 
     uid = db.Column(db.String(14), primary_key=True)
-    product_uid_fk = db.Column(db.Integer, nullable=False)
+    product_uid_fk = db.Column(db.String(36), db.ForeignKey('produtos.uid'), nullable=False)
     organization_uid_fk = db.Column(db.Integer, nullable=False)
     expiry_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.TIMESTAMP(timezone=True), nullable=False, default=datetime.now)
     updated_at = db.Column(db.TIMESTAMP(timezone=True), nullable=True, onupdate=datetime.now)
 
-    product = relationship("Product", back_populates="product_expiry")
+    product = relationship("Product", back_populates="product_expiry", foreign_keys=[product_uid_fk])
 
     def to_dict(self):
         return {

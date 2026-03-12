@@ -14,7 +14,7 @@ RESPONSE = {
     "ONE_MAIN_REQUIRED": { 'code': 2008, 'message': "At least one main is required" },
 }
 
-def json_response(response, status_code, uid=0, data=None, total=0, page=0, pages=0):
+def json_response(response, status_code, uid='', data=None, total=0, page=0, pages=0):
     return jsonify({
         "uid": uid,
         "response": response,
