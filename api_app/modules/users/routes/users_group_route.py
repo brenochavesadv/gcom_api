@@ -1,6 +1,6 @@
 
 from flask import Blueprint, request, jsonify
-from .users_group_model import UsersGroup
+from ..models.users_group_model import UsersGroup
 from main import db
 from flask_jwt_extended import jwt_required
 

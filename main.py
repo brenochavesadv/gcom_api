@@ -71,7 +71,7 @@ def create_app():
     from api_app.modules.person.routes.phone_route import phone_bp
     app.register_blueprint(phone_bp, url_prefix='/phone')
 
-    from api_app.modules.organization.organization_route import organization_bp
+    from api_app.modules.users.routes.organization_route import organization_bp
     app.register_blueprint(organization_bp, url_prefix='/organization')
 
     from api_app.modules.acl.acl_decorator import permissions_bp
@@ -89,10 +89,10 @@ def create_app():
     from api_app.modules.product.routes.product_route import product_bp
     app.register_blueprint(product_bp, url_prefix='/product')    
  
-    from api_app.modules.users.users_route import users_bp
+    from api_app.modules.users.routes.users_route import users_bp
     app.register_blueprint(users_bp, url_prefix='/users')
     
-    from api_app.modules.users.users_group_route import users_group_bp
+    from api_app.modules.users.routes.users_group_route import users_group_bp
     app.register_blueprint(users_group_bp, url_prefix='/usersgroup')
 
     return app

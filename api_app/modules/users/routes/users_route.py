@@ -1,12 +1,12 @@
 from main import db
 from datetime import datetime
 from flask import Blueprint, request, jsonify
-from ...constants.response import RESPONSE, json_response
-from .users_model import Users
-from ..auth_firebase.firebase_decorators import firebase_auth_required
+from ....constants.response import RESPONSE, json_response
+from ..models.users_model import Users
+from ...auth_firebase.firebase_decorators import firebase_auth_required
 from sqlalchemy.exc import IntegrityError
 import traceback
-from ..organization.organization_model import Organization
+from ..models.organization_model import Organization
 from sqlalchemy.orm import contains_eager
 
 users_bp = Blueprint("users", __name__)
@@ -25,7 +25,7 @@ def create_users():
 
         new_user = Users(
             uid=user.uid,
-            email=user.email,
+            mail=user.mail,
             name=user.name,
             display_name=user.display_name,
             login=user.login,
@@ -71,7 +71,7 @@ def update_users():
             return json_response(uid=0, response="NOT_FOUND", status_code=404)
 
         if type == "u": # update user details
-            user.email = user_data.email
+            user.mail = user_data.mail
             user.display_name = user_data.display_name
             user.location = user_data.location
             user.language_code = user_data.language_code

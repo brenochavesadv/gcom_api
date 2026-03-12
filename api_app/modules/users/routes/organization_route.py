@@ -1,12 +1,12 @@
 from main import db
 from datetime import datetime
 from flask import Blueprint, request
-from ...constants.response import RESPONSE, json_response
-from ..auth_firebase.firebase_decorators import firebase_auth_required
+from ....constants.response import RESPONSE, json_response
+from ...auth_firebase.firebase_decorators import firebase_auth_required
 from flasgger import swag_from
 from sqlalchemy.exc import IntegrityError
 import traceback
-from ..organization.organization_model import Organization
+from ..models.organization_model import Organization
 
 organization_bp = Blueprint("organization", __name__)
 
@@ -155,28 +155,53 @@ def update_organization():
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
     
 @organization_bp.route("/list", methods=["GET"])
-@firebase_auth_required
-def list_organization():
+#@firebase_auth_required
+def list_organization(): 
+
     try:     
         # Get person_uid from query parameters
-        uid = request.args.get("u") 
-        main_uid = request.args.get("m")
+        uid = request.args.get("u")
+        name = request.args.get("n")
+        limit = request.args.get("limit")  # limit of items per page
+        order_by = request.args.get("order")  # field to order by
 
+        org_query = Organization.query
 
         if (uid is not None and uid != ""):
-            print("Fetching organization by uid:", uid)
-            mails = Organization.query.filter_by(uid=uid).first()
-        elif (main_uid is not None and main_uid != ""):
-            print("Fetching organizations by main_uid:", main_uid)
-            mails = Organization.query.filter_by(main_uid_fk=main_uid).all()
+            print("Fetching organizations by uid:", uid)
+            org_query = org_query.filter_by(uid=uid)
+        elif (name is not None and name != ""):
+            print("Fetching organizations by name:", name)
+            org_query = org_query.filter(Organization.name.ilike(f"%{name}%"))
         else:
             return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
-        
-        org_list = [Organization.to_dict() for Organization in mails]
 
-        return json_response(uid=0, response="OK", status_code=200, data=org_list)
+        org_query = org_query.order_by(order_by if order_by is not None else Organization.name.asc())
+
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", limit if limit is not None else 15))
+        pagination = org_query.paginate(page=page, per_page=per_page, error_out=False)
+
+        # Serialize data
+        data = []
+        for org in pagination.items:
+            org_data = {}
+            org_data["organization"] = org.to_dict()
+           
+            data.append(org_data)
+        
+        return json_response(
+            response = "OK",
+            status_code = 200,
+            data = data,
+            total = pagination.total,
+            page = pagination.page,
+            pages = pagination.pages
+        )
 
     except Exception as e:
+        print("Error listing organizations:", e)
+        print(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
     
 @organization_bp.route("/sync", methods=["GET"])

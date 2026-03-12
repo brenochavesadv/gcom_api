@@ -1,8 +1,10 @@
 from sqlalchemy import func
 from sqlalchemy.orm import relationship
 from main import db
-from ..person.models.person_model import Person
+from ...person.models.person_model import Person
 from .users_group_model import UsersGroup
+from .user_organizations import UserOrganizations
+from .organization_model import Organization
 
 class Users(db.Model):
     #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
@@ -31,13 +33,13 @@ class Users(db.Model):
     login_counter = db.Column("numlog", db.Integer, default=0)
     users_group_uid_fk = db.Column(db.String(36), db.ForeignKey('users_grp.uid'))
     permissions = db.Column("acess", db.String(255))
-    user_organizations = db.Column(db.String(255))  # JSON string with organizationUid as key and organizationName as value
     sync_status = db.Column(db.String(10))
     created_at = db.Column("data_criacao", db.DateTime, server_default=func.now())
     updated_at = db.Column("data_atualizacao", db.DateTime)   
     organization = relationship("Organization", back_populates="users", foreign_keys=[default_organization_uid_fk])
     users_group = relationship("UsersGroup", back_populates="users", foreign_keys=[users_group_uid_fk])
     person = relationship("Person", back_populates="users", foreign_keys=[person_uid_fk])
+    user_organizations = relationship("UserOrganizations", back_populates="users", foreign_keys="UserOrganizations.user_uid_fk")
 
     def to_dict(self):
         return {
@@ -64,7 +66,7 @@ class Users(db.Model):
             'login_counter': self.login_counter,
             'users_group_uid_fk': self.users_group_uid_fk,
             'permissions': self.permissions,
-            'user_organizations': self.user_organizations,
+            'user_organizations': [org.user_organizations_dict() for org in self.user_organizations],
             'sync_status': self.sync_status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -100,6 +102,5 @@ class Users(db.Model):
             login_counter=data.get("login_counter"),
             users_group_uid_fk=data.get("users_group_uid_fk"),
             permissions=data.get("permissions"),
-            user_organizations=data.get("user_organizations"),
             sync_status=data.get("sync_status")
         )
