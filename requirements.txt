@@ -11,3 +11,4 @@ celery
 redis
 firebase-admin
 pytz
+bcrypt

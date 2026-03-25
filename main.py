@@ -56,11 +56,8 @@ def create_app():
     app.register_blueprint(errors_bp, url_prefix='/errors')
 
     # Initialize Firebase admin SDK (reads env or security file)
-    from api_app.modules.auth_firebase.firebase import init_app as init_firebase
+    from api_app.modules.auth_firebase.firebase_services import init_app as init_firebase
     init_firebase(app)
-
-    from api_app.modules.auth_firebase.firebase_routes import firebase_bp
-    app.register_blueprint(firebase_bp, url_prefix='/firebase')
 
     from test_health import health_bp
     app.register_blueprint(health_bp, url_prefix='/health')
@@ -89,10 +86,16 @@ def create_app():
     from api_app.modules.product.routes.product_route import product_bp
     app.register_blueprint(product_bp, url_prefix='/product')    
  
+    from api_app.modules.sync.sync_route import sync_bp
+    app.register_blueprint(sync_bp, url_prefix='/sync')
+ 
+    from api_app.modules.users.routes.user_organizations_route import user_organizations_bp
+    app.register_blueprint(user_organizations_bp, url_prefix='/u_orgs')
+ 
     from api_app.modules.users.routes.users_route import users_bp
     app.register_blueprint(users_bp, url_prefix='/users')
     
-    from api_app.modules.users.routes.users_group_route import users_group_bp
-    app.register_blueprint(users_group_bp, url_prefix='/usersgroup')
+    from api_app.modules.users.routes.users_roles_route import users_roles_bp
+    app.register_blueprint(users_roles_bp, url_prefix='/roles')
 
     return app

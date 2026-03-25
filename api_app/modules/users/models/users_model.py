@@ -1,10 +1,11 @@
 from sqlalchemy import func
 from sqlalchemy.orm import relationship
+from sqlalchemy.exc import ProgrammingError
 from main import db
 from ...person.models.person_model import Person
-from .users_group_model import UsersGroup
-from .user_organizations import UserOrganizations
+from .user_organizations_model import UserOrganizations
 from .organization_model import Organization
+import bcrypt
 
 class Users(db.Model):
     #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
@@ -13,94 +14,94 @@ class Users(db.Model):
     id = db.Column("users_id", db.Integer, primary_key=True)
     uid = db.Column(db.String(36), unique=True, nullable=False)
     pescod_id_fk = db.Column("pescod_id_fk", db.Integer, db.ForeignKey('pescod.pescod_id'))
-    person_uid_fk = db.Column("person_uid_fk", db.String(36), db.ForeignKey('pescod.uid'))
     mail = db.Column(db.String(60), unique=True, nullable=False)
     name = db.Column("nome", db.String(100))
     display_name = db.Column(db.String(25))
-    login = db.Column(db.String(15), unique=True)
+    instit_id_fk = db.Column("instit_id_fk", db.Integer)
+    is_active = db.Column("ativo", db.Boolean, default=False)
+    users_grp_id_fk = db.Column("users_grp_id_fk", db.Integer)
+    login = db.Column('login',db.String(20), unique=True)
+    numlog = db.Column("numlog", db.Integer, default=0)
+    senha = db.Column("senha", db.String(10))
+    acess = db.Column("acess", db.String(255))
+    is_developer = db.Column("desenv", db.Boolean, default=False)
+    pin_updated_at = db.Column("data_senha", db.DateTime)
+    created_at = db.Column("data_criacao", db.DateTime, server_default=func.now())
+    updated_at = db.Column("data_atualizacao", db.DateTime)   
     location = db.Column(db.String(4))
     language_code = db.Column(db.String(2))
     iso2_alpha = db.Column(db.String(2))
-    state = db.Column(db.String(30))
-    city = db.Column(db.String(50))
     date_format = db.Column(db.String(10))
-    pin_code = db.Column("senha", db.String(10))
-    pin_updated_at = db.Column("data_senha", db.DateTime)
-    is_developer = db.Column("desenv", db.Boolean, default=False)
-    organization_id_fk = db.Column("instit_id_fk", db.Integer, db.ForeignKey('instit.instit_id'))
-    default_organization_uid_fk = db.Column(db.String(36), db.ForeignKey('instit.uid'))
-    is_active = db.Column("ativo", db.Boolean, default=False)
-    login_counter = db.Column("numlog", db.Integer, default=0)
-    users_group_uid_fk = db.Column(db.String(36), db.ForeignKey('users_grp.uid'))
-    permissions = db.Column("acess", db.String(255))
+    default_organization_uid_fk = db.Column(db.String(36), db.ForeignKey('instit.uid'))    
     sync_status = db.Column(db.String(10))
-    created_at = db.Column("data_criacao", db.DateTime, server_default=func.now())
-    updated_at = db.Column("data_atualizacao", db.DateTime)   
+    pin_code = db.Column(db.String(255), nullable=False) 
+    pw_offline = db.Column(db.String(255))
+    
     organization = relationship("Organization", back_populates="users", foreign_keys=[default_organization_uid_fk])
-    users_group = relationship("UsersGroup", back_populates="users", foreign_keys=[users_group_uid_fk])
-    person = relationship("Person", back_populates="users", foreign_keys=[person_uid_fk])
-    user_organizations = relationship("UserOrganizations", back_populates="users", foreign_keys="UserOrganizations.user_uid_fk")
+    user_organizations = relationship("UserOrganizations", back_populates="users", foreign_keys="UserOrganizations.users_uid_fk")
 
-    def to_dict(self):
-        return {
+    def to_dict(self, join_orgs=False):
+        return {            
             'id': self.id,
             'uid': self.uid,
             'pescod_id_fk': self.pescod_id_fk,
-            'person_uid_fk': self.person_uid_fk,
             'mail': self.mail,
             'name': self.name,
             'display_name': self.display_name,
+            'instit_id_fk': self.instit_id_fk,
+            'is_active': True if self.is_active == 1 else False,
+            'users_grp_id_fk': self.users_grp_id_fk,
             'login': self.login,
+            'numlog': self.numlog,
+            'senha': self.senha,
+            'acess': self.acess,
+            'is_developer': self.is_developer,
+            'pin_updated_at': self.pin_updated_at.isoformat() if self.pin_updated_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'location': self.location,
             'language_code': self.language_code,
             'iso2_alpha': self.iso2_alpha,
-            'state': self.state,
-            'city': self.city,
             'date_format': self.date_format,
-            'pin_code': self.pin_code,
-            'pin_updated_at': self.pin_updated_at.isoformat() if self.pin_updated_at else None,
-            'is_developer': self.is_developer,
-            'organization_id_fk': self.organization_id_fk,
             'default_organization_uid_fk': self.default_organization_uid_fk,
-            'is_active': bool(self.is_active) if self.is_active == 1 else False,
-            'login_counter': self.login_counter,
-            'users_group_uid_fk': self.users_group_uid_fk,
-            'permissions': self.permissions,
-            'user_organizations': [org.user_organizations_dict() for org in self.user_organizations],
             'sync_status': self.sync_status,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'pin_code': self.pin_code,
+            'pw_offline': self.pw_offline,
+            'user_organizations': [org.to_dict() for org in self.user_organizations] if join_orgs else None,
         }
 
-    def __repr__(self):
-        return f"<Users {self.uid}>"
 
-    def __str__(self):
-        return f"Users(uid={self.uid}, mail={self.mail}, name={self.name})"
-
-    def from_json(data):
+    def from_json(json_data):
         return Users(
-            uid=data.get("uid"),
-            mail=data.get("mail"),
-            pescod_id_fk=data.get("pescod_id_fk"),
-            person_uid_fk=data.get("person_uid_fk"),
-            name=data.get("name"),
-            display_name=data.get("display_name"),
-            login=data.get("login"),
-            location=data.get("location"),
-            language_code=data.get("language_code"),
-            iso2_alpha=data.get("iso2_alpha"),
-            state=data.get("state"),
-            city=data.get("city"),
-            date_format=data.get("date_format"),
-            pin_code=data.get("pin_code"),
-            pin_updated_at=data.get("pin_updated_at"),
-            is_developer=data.get("is_developer"),
-            organization_id_fk=data.get("organization_id_fk"),
-            default_organization_uid_fk=data.get("default_organization_uid_fk"),
-            is_active=data.get("is_active"),
-            login_counter=data.get("login_counter"),
-            users_group_uid_fk=data.get("users_group_uid_fk"),
-            permissions=data.get("permissions"),
-            sync_status=data.get("sync_status")
+            id=json_data.get("id"),
+            uid=json_data.get("uid"),
+            pescod_id_fk=json_data.get("pescod_id_fk"),
+            mail=json_data.get("mail"),
+            name=json_data.get("name"),
+            display_name=json_data.get("display_name"),
+            instit_id_fk=json_data.get("instit_id_fk"),
+            is_active=json_data.get("is_active"),
+            users_grp_id_fk=json_data.get("users_grp_id_fk"),
+            login=json_data.get("login"),
+            numlog=json_data.get("numlog"),
+            senha=json_data.get("senha"),
+            acess=json_data.get("acess"),
+            is_developer=json_data.get("is_developer"),
+            pin_updated_at=json_data.get("pin_updated_at"),
+            created_at=json_data.get("created_at"),
+            updated_at=json_data.get("updated_at"),
+            location=json_data.get("location"),
+            language_code=json_data.get("language_code"),
+            iso2_alpha=json_data.get("iso2_alpha"),
+            date_format=json_data.get("date_format"),
+            pin_code=json_data.get("pin_code"),
+            pw_offline=json_data.get("pw_offline"),
+            default_organization_uid_fk=json_data.get("default_organization_uid_fk"),
+            sync_status=json_data.get("sync_status"),
         )
+
+    def bcrypt_hash(pin_code,user_uid):
+        return bcrypt.hashpw(
+        (f"{pin_code}{user_uid}").encode("utf-8"),
+            bcrypt.gensalt()
+        ).decode("utf-8")

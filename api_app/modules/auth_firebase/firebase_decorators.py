@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import request, jsonify
-from .firebase import verify_firebase_token
+from .firebase_services import verify_firebase_token
 
 
 def firebase_auth_required(f=None):

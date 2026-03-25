@@ -184,11 +184,8 @@ def list_organization():
 
         # Serialize data
         data = []
-        for org in pagination.items:
-            org_data = {}
-            org_data["organization"] = org.to_dict()
-           
-            data.append(org_data)
+        for org in pagination.items:           
+            data.append(org.to_dict())
         
         return json_response(
             response = "OK",

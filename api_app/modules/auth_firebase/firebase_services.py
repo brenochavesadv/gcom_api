@@ -100,19 +100,31 @@ def get_user_by_uid(uid):
     """
     try:
         user_record = auth.get_user(uid)
-        return {
-            'uid': user_record.uid,
-            'email': user_record.email,
-            'email_verified': user_record.email_verified,
-            'display_name': user_record.display_name,
-            'photo_url': user_record.photo_url,
-            'disabled': user_record.disabled,
-            'creation_time': user_record.user_metadata.creation_timestamp,
-            'last_sign_in': user_record.user_metadata.last_sign_in_timestamp
-        }
+        return user_to_dict(user_record)
     except auth.UserNotFoundError:
         print(f"User with UID {uid} not found")
         return None
     except Exception as e:
         print(f"Error getting user: {str(e)}")
         return None
+
+def user_to_dict(user_record):
+    """
+    Convert Firebase user record to dictionary format
+    
+    Args:
+        user_record (firebase_admin.auth.UserRecord): Firebase user record
+        
+    Returns:
+        dict: User information in dictionary format
+    """
+    return {
+        'uid': user_record.uid,
+        'email': user_record.email,
+        'email_verified': user_record.email_verified,
+        'display_name': user_record.display_name,
+        'photo_url': user_record.photo_url,
+        'disabled': user_record.disabled,
+        'creation_time': user_record.user_metadata.creation_timestamp,
+        'last_sign_in': user_record.user_metadata.last_sign_in_timestamp
+    }

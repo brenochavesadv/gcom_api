@@ -27,7 +27,7 @@ class Person(db.Model):
     address = relationship("Address", back_populates="person", lazy='select', foreign_keys="[Address.person_uid_fk]")
     person_natural = relationship("PersonNatural", back_populates="person", uselist=False, foreign_keys="[PersonNatural.person_uid_fk]")
     person_legal = relationship("PersonLegal", back_populates="person", uselist=False, foreign_keys="[PersonLegal.person_uid_fk]")
-    users = relationship("Users", back_populates="person", lazy='select', foreign_keys="[Users.person_uid_fk]")
+    user_organizations = relationship("UserOrganizations", back_populates="person", lazy='select', foreign_keys="[UserOrganizations.person_uid_fk]")
     organization = relationship("Organization", back_populates="person", foreign_keys=[main_organization_uid_fk])
 
     #pronoun = relationship("Pronoun", back_populates="persons", lazy='select')

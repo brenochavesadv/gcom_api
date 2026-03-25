@@ -92,7 +92,7 @@ def new_person_natural():
 
     
 @person_natural_bp.route("/update", methods=["PUT"])
-@firebase_auth_required
+#@firebase_auth_required
 @swag_from(person_natural_docs["update_person_natural"])
 def update_person_natural():
     try:
@@ -102,7 +102,7 @@ def update_person_natural():
         print('Person Natural Data:', person_natural_data)
         
         # Validate required fields and report which are missing
-        required_fields = ["person_uid", "name", "id_number"]
+        required_fields = ["uid", "name", "id_number"]
         missing = [f for f in required_fields if not person_natural_data.get(f)]
         if missing:
             return jsonify({
@@ -115,11 +115,11 @@ def update_person_natural():
         person_data = Person.person_data(person_natural_data)
 
         # Check if Person exists
-        person_record = Person.query.filter_by(person_uid=person_data.person_uid).first()
+        person_record = Person.query.filter_by(uid=person_data.uid).first()
         if not person_record:
             return jsonify({
                 "uid": 0,
-                "message": f"Person with ID {person_data.person_uid} not found",
+                "message": f"Person with ID {person_data.uid} not found",
                 "error_code": 3001
             }), 404
 
@@ -132,31 +132,64 @@ def update_person_natural():
         person_record.balance = person_data.balance
 
         # Build a temporary PersonNatural object from input to extract values
-        temp_person_natural = PersonNatural.person_natural_data(person_data.person_uid, person_natural_data)
-        person_natural_record = PersonNatural.query.filter_by(person_uid_fk=person_data.person_uid).first()
+        temp_person_natural = PersonNatural.person_natural_data(person_data.uid, person_natural_data)
+        person_natural_record = PersonNatural.query.filter_by(person_uid_fk=person_data.uid).first()
         # Check if PersonNatural exists
         if not person_natural_record:
             return jsonify({
                 "uid": 0,
-                "message": f"PersonNatural with Person ID {person_data.person_uid} not found",
+                "message": f"PersonNatural with Person ID {person_data.uid} not found",
                 "error_code": 3001
             }), 404
 
-        # Update PersonNatural fields from the temp object (avoid overwriting PK/FK)
-        for key, value in temp_person_natural.to_dict().items():
-            if key not in ['person_natural_uid', 'person_uid_fk']:
-                setattr(person_natural_record, key, value)
+        # Update only mutable fields. Do not touch PK/FK identity columns.
+        updatable_fields = [
+            "id_card",
+            "id_issuer",
+            "birth_country",
+            "birth_city",
+            "birth_date",
+            "pronoun",
+            "nickname",
+            "gender",
+            "father_name",
+            "mother_name",
+            "profession",
+            "professional_id",
+            "salary",
+            "employer",
+            "employer_contact",
+            "cnpj",
+            "iest",
+            "imun",
+            "emprend",
+            "other_incomes",
+            "incomes_sum",
+            "file_income_tax",
+            "marital_status",
+            "children",
+            "alimony",
+            "spouse",
+            "spouse_id_card",
+            "spouse_profession",
+            "spouse_employer",
+            "spouse_incomes",
+            "spouse_phone",
+            "spouse_email",
+        ]
+        for field in updatable_fields:
+            setattr(person_natural_record, field, getattr(temp_person_natural, field))
 
         # Commit all changes
         db.session.commit()
 
-        print(f"Successfully updated Person ID: {person_data.person_uid}")
+        print(f"Successfully updated Person ID: {person_data.uid}")
 
         # Refresh to get actual database state
         db.session.refresh(person_natural_record)
 
         return jsonify({
-            "uid": person_data.person_uid,
+            "uid": person_data.uid,
             "message": "Person natural updated successfully",
             "person": person_record.to_dict(),
             "person_natural": person_natural_record.to_dict()
