@@ -60,13 +60,13 @@ def new_person_legal():
             }), ErrorCodes.DUPLICATE_ENTRY.http_status
 
         # Create objects using factory
-        person = Person.person_data(person_legal_data)
+        person = Person.from_json(person_legal_data)
         person.person_uid = None  # Ensure UID is None for new record
         print(f'Person Data: {person.to_dict()}')   
         db.session.add(person)
         db.session.flush()
 
-        person_legal = PersonLegal.create_person_legal(person.person_uid, person_legal_data)
+        person_legal = PersonLegal.from_json(person.person_uid, person_legal_data)
         
         db.session.add(person_legal)
         db.session.commit()

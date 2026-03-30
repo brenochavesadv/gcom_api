@@ -53,7 +53,7 @@ class Person(db.Model):
 
     # CREATES A FACTORY FOR PERSON_MODEL:
     @staticmethod
-    def person_data(data):
+    def from_json(data):
         person = Person(
             id=data.get("id"),
             uid=data.get("uid"),

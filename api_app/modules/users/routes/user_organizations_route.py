@@ -8,18 +8,18 @@ from ..models.user_organizations_model import UserOrganizations
 
 user_organizations_bp = Blueprint("u_orgs", __name__)
 
-@user_organizations_bp.route("/list", methods=["GET"])
+@user_organizations_bp.route("/list", methods=["POST"])
 #@firebase_auth_required
 def list_users_organizations(): 
 
     try:     
-        user_uid = request.args.get("u")
+        user_uid = request.get_json().get("u") or None
 
         user_orgs_query = UserOrganizations.query
 
         if (user_uid is not None and user_uid != ""):
             print("Fetching users organizations by user uid:", user_uid)
-            user_orgs_query = user_orgs_query.filter_by(users_uid_fk=user_uid)
+            user_orgs_query = user_orgs_query.filter_by(user_profiles_uid_fk=user_uid)
         else:
             return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
 

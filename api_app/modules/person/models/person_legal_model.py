@@ -54,8 +54,8 @@ class PersonLegal(db.Model):
         return f"PersonLegal(uid={self.uid}, commercial_name={self.commercial_name}, person_uid_fk={self.person_uid_fk})"
 
     # CREATES A FACTORY FOR person_legal
-    def create_person_legal(person_uid_fk, data):
-        person_legal = PersonLegal(
+    def from_json(person_uid_fk, data):
+        return PersonLegal(
             id=data.get("id"),
             uid=data.get("uid"),
             person_uid_fk=person_uid_fk,
@@ -70,4 +70,3 @@ class PersonLegal(db.Model):
             contact_name=data.get("contact_name"),
             foundation_date=data.get("foundation_date"),
         )
-        return person_legal

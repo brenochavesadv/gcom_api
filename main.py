@@ -92,10 +92,10 @@ def create_app():
     from api_app.modules.users.routes.user_organizations_route import user_organizations_bp
     app.register_blueprint(user_organizations_bp, url_prefix='/u_orgs')
  
-    from api_app.modules.users.routes.users_route import users_bp
+    from api_app.modules.users.routes.user_route import users_bp
     app.register_blueprint(users_bp, url_prefix='/users')
     
-    from api_app.modules.users.routes.users_roles_route import users_roles_bp
+    from api_app.modules.users.routes.user_roles_route import users_roles_bp
     app.register_blueprint(users_roles_bp, url_prefix='/roles')
 
     return app

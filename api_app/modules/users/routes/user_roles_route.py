@@ -4,9 +4,8 @@ from flask import Blueprint, request
 from ....constants.response import RESPONSE, json_response
 from ...auth_firebase.firebase_decorators import firebase_auth_required
 from flasgger import swag_from
-from sqlalchemy.exc import IntegrityError
 import traceback
-from ..models.users_roles_model import UsersRoles
+from ..models.user_roles_model import UserRoles
 from ..models.organization_model import Organization
 
 users_roles_bp = Blueprint("roles", __name__)
@@ -18,18 +17,18 @@ def create_users_roles():
         data = request.get_json(silent=True) or {}
         role_payload = data.get("usersRoles") if isinstance(data.get("usersRoles"), dict) else data
         print("Received users roles data:", role_payload)
-        users_roles = UsersRoles.get_data(role_payload)
+        user_roles = UserRoles.get_data(role_payload)
 
-        if ((users_roles['uid'] is None or users_roles['uid'] == "") or (users_roles['name'] is None or users_roles['name'] == "")):
+        if ((user_roles['uid'] is None or user_roles['uid'] == "") or (user_roles['name'] is None or user_roles['name'] == "")):
             return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
 
-        if UsersRoles.query.filter_by(uid=users_roles['uid']).first() or UsersRoles.query.filter_by(name=users_roles['name']).first():
+        if UserRoles.query.filter_by(uid=user_roles['uid']).first() or UserRoles.query.filter_by(name=user_roles['name']).first():
             return json_response(uid=0, response="DUPLICATE_ENTRY", status_code=409)
 
-        db.session.add(UsersRoles(**users_roles))
+        db.session.add(UserRoles(**user_roles))
         db.session.commit()
     
-        return json_response(uid=users_roles['uid'], response="CREATED_SUCCESSFULLY", status_code=201)
+        return json_response(uid=user_roles['uid'], response="CREATED_SUCCESSFULLY", status_code=201)
 
     except Exception as e:
         db.session.rollback()
@@ -51,31 +50,24 @@ def update_users_roles():
         if ((uid is None or uid == "") or (name is None or name == "") or (org is None or org == "")):
             return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
         
-        users_roles = UsersRoles.query.filter_by(uid=uid).first()
-        if not users_roles:
+        user_roles = UserRoles.query.filter_by(uid=uid).first()
+        if not user_roles:
             return json_response(uid=0, response="NOT_FOUND", status_code=404)
 
-        duplicate_name = UsersRoles.query.filter(UsersRoles.name == name, UsersRoles.main_organization_uid_fk == org, UsersRoles.uid != uid).first()
+        duplicate_name = UserRoles.query.filter(UserRoles.name == name, UserRoles.main_organization_uid_fk == org, UserRoles.uid != uid).first()
         if duplicate_name:
             return json_response(uid=0, response="DUPLICATE_ENTRY", status_code=409)
 
-        users_roles.name = name
-        users_roles.main_organization_uid_fk = org
-        users_roles.description = data.get("description")
-        users_roles.allowed_app_routes = data.get("allowed_app_routes")
-        users_roles.sync_status = data.get("sync_status","PENDING")
-        users_roles.updated_at = datetime.now()
+        user_roles.name = name
+        user_roles.main_organization_uid_fk = org
+        user_roles.description = data.get("description")
+        user_roles.allowed_app_routes = data.get("allowed_app_routes")
+        user_roles.sync_status = data.get("sync_status","PENDING")
+        user_roles.updated_at = datetime.now()
 
         db.session.commit()
 
-        return json_response(uid=users_roles.uid, response="UPDATED_SUCCESSFULLY", status_code=200)
-
-    except IntegrityError as ie:
-        db.session.rollback()
-        # likely unique/foreign key constraint violation
-        print("IntegrityError updating users roles:", ie)
-        print(traceback.format_exc())
-        return json_response(uid=0, response="DUPLICATE_ENTRY", status_code=409)
+        return json_response(uid=user_roles.uid, response="UPDATED_SUCCESSFULLY", status_code=200)
     
     except Exception as e:
         db.session.rollback()
@@ -83,14 +75,14 @@ def update_users_roles():
         print(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
     
-@users_roles_bp.route("/list", methods=["GET"])
+@users_roles_bp.route("/list", methods=["POST"])
 ##@firebase_auth_required
 def list_users_roles(): 
 
     try:     
-        main_organization_uid = request.args.get("o")
+        main_organization_uid = request.get_json().get("o")
 
-        roles_query = UsersRoles.query
+        roles_query = UserRoles.query
 
         if (main_organization_uid is not None and main_organization_uid != ""):
             print("Fetching users roles by organization main uid:", main_organization_uid)

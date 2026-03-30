@@ -106,7 +106,7 @@ class PersonNatural(db.Model):
         
     # FACTORY FOR PERSON_NATURAL
     @staticmethod
-    def person_natural_data(person_uid, data):
+    def from_json(person_uid, data):
         profession = data.get("profession") or {}
         family = data.get("family") or {}
         person_natural = PersonNatural(

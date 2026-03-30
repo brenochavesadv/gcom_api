@@ -1,12 +1,11 @@
 from main import db
-import json
 from sqlalchemy.orm import relationship
 from .organization_model import Organization
 from sqlalchemy.dialects.mysql import LONGTEXT
 
-class UsersRoles(db.Model):
+class UserRoles(db.Model):
   # __bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
-    __tablename__ = "users_roles"
+    __tablename__ = "user_roles"
 
     uid = db.Column(db.String(36), unique=True, primary_key=True)
     main_organization_uid_fk = db.Column(db.String(36), db.ForeignKey(Organization.uid))
@@ -17,8 +16,8 @@ class UsersRoles(db.Model):
     created_at = db.Column(db.TIMESTAMP(timezone=True))
     updated_at = db.Column(db.TIMESTAMP(timezone=True))
 
-    organization = relationship("Organization", back_populates="users_roles", foreign_keys=[main_organization_uid_fk])
-    user_organizations = relationship("UserOrganizations", back_populates="users_roles", foreign_keys="UserOrganizations.users_roles_uid_fk")
+    organization = relationship("Organization", back_populates="user_roles", foreign_keys=[main_organization_uid_fk])
+    user_organizations = relationship("UserOrganizations", back_populates="user_roles", foreign_keys="UserOrganizations.user_roles_uid_fk")
 
     def to_dict(self):
         return {

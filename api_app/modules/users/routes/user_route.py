@@ -4,9 +4,10 @@ from main import db
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from ....constants.response import RESPONSE, json_response
-from ..models.users_model import Users
+from ..models.user_profiles_model import UserProfiles   
 from ..models.user_organizations_model import UserOrganizations
-from ..models.users_roles_model import UsersRoles
+from ..models.user_roles_model import UserRoles
+from ..models.user_keys_model import UserKeys
 from ...auth_firebase.firebase_decorators import firebase_auth_required
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import inspect
@@ -17,61 +18,80 @@ from firebase_admin import auth
 
 users_bp = Blueprint("users", __name__)
 
+# creates new user on UserOrganizations and UserProfiles
 @users_bp.route("/create", methods=["POST"])
 #@firebase_auth_required
 def create_users():
     try:
         data = request.get_json() or {}
-        user_payload = data.get("user", {})
-        user_org_payload = data.get("user_org", {})
+        user_payload = data.get("user_profiles", {})
+        user_org_payload = data.get("user_organizations", {})
+        print("user_payload:", user_payload)
+        print("user_org_payload:", user_org_payload)
 
-        new_user = Users.from_json(user_payload)
+        new_user = UserProfiles.from_json(user_payload)
         new_user_org = UserOrganizations.from_json(user_org_payload)
 
         print("Creating user for mail:", new_user.mail)
 
         if ((new_user.mail is None or new_user.mail == "") 
             or (new_user_org.person_uid_fk is None or new_user_org.person_uid_fk == "") 
-            or (new_user_org.organization_uid_fk is None or new_user_org.organization_uid_fk == "")):
+            or (new_user_org.organization_uid_fk is None or new_user_org.organization_uid_fk == "")
+            or (new_user_org.user_name is None or new_user_org.user_name == "")):
 
             return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
 
         # Resolve UID from Firebase: reuse existing user by email, otherwise create.
         try:
+            
             firebase_user = auth.get_user_by_email(new_user.mail)
             firebase_uid = firebase_user.uid
             print(f"Firebase user {firebase_user.email} found with UID: {firebase_uid}")
+            
         except auth.UserNotFoundError:
+            
             if not new_user.uid:
                 new_user.uid = str(uuid.uuid4())
+                
             firebase_user = auth.create_user(
                 uid=new_user.uid,
                 email=new_user.mail,
                 display_name=new_user.display_name,
             )
+            
             firebase_uid = firebase_user.uid
             print(f"Firebase user created for {new_user.mail} with UID: {firebase_uid}")
 
         new_user.uid = firebase_uid
 
         # Validate duplicate membership in organization.
-        new_user_org.users_uid_fk = new_user.uid
-        user_exists_in_org = UserOrganizations.query.filter_by(users_uid_fk=new_user_org.users_uid_fk, organization_uid_fk=new_user_org.organization_uid_fk).first()
+        new_user_org.user_profiles_uid_fk = new_user.uid
+        user_exists_in_org = UserOrganizations.query.filter_by(user_profiles_uid_fk=new_user.uid, organization_uid_fk=new_user_org.organization_uid_fk).first()
         person_exists_in_org = UserOrganizations.query.filter_by(person_uid_fk=new_user_org.person_uid_fk, organization_uid_fk=new_user_org.organization_uid_fk).first()
 
         if user_exists_in_org is not None or person_exists_in_org is not None:
             return json_response(uid=0, response="ALREADY_EXISTS", status_code=409)
 
         # Upsert local user by Firebase UID.
-        user = Users.query.filter_by(uid=new_user.uid).first()
+        user = UserProfiles.query.filter_by(uid=new_user.uid).first()
+        user_keys = ''
+        
         if user is None:
             user = new_user
             user.uid = firebase_uid
             user.mail = firebase_user.email or new_user.mail
             user.display_name = firebase_user.display_name or new_user.display_name
-            user.pin_code = Users.bcrypt_hash('8uaTs', user.uid) if new_user.pin_code else None
-            user.pw_offline = Users.bcrypt_hash('84hts', user.uid) if new_user.pw_offline else None
+
             db.session.add(user)
+
+            user_keys = UserKeys(
+                uid=str(uuid.uuid4()),
+                user_profiles_uid_fk=user.uid,
+                pin_code=UserKeys.bcrypt_hash(str(uuid.uuid4()), user.uid),
+                pw_offline=UserKeys.bcrypt_hash(str(uuid.uuid4()), user.uid),
+            )
+            
+            db.session.add(user_keys)
         else:
             user.mail = new_user.mail or user.mail
             user.name = new_user.name or user.name
@@ -80,31 +100,23 @@ def create_users():
             user.language_code = new_user.language_code or user.language_code
             user.iso2_alpha = new_user.iso2_alpha or user.iso2_alpha
             user.date_format = new_user.date_format or user.date_format
-            user.pin_code = Users.bcrypt_hash('1hyde', user.uid) if new_user.pin_code else None
-            user.pw_offline = Users.bcrypt_hash('1xyTe', user.uid) if new_user.pw_offline else None
             user.default_organization_uid_fk = new_user.default_organization_uid_fk or user.default_organization_uid_fk
             user.sync_status = new_user.sync_status or user.sync_status
 
         new_user_org.uid = str(uuid.uuid4())
-        new_user_org.users_uid_fk = user.uid
+        new_user_org.user_profiles_uid_fk = user.uid
         db.session.add(new_user_org)
 
         db.session.commit()
-    
+
+        return_data = {"user_profiles": user.to_dict(), "user_keys": user_keys.to_dict() if user_keys else None, "user_organizations": new_user_org.to_dict()}
+        print("User created successfully! return_data: ", return_data)
+
         return json_response(
             uid=user.uid,
             response="CREATED_SUCCESSFULLY",
             status_code=201,
-            data={
-                "user": f"/users/{user.uid},/user_organizations/{new_user_org.uid}",
-                "user_org": {
-                    "uid": new_user_org.uid,
-                    "users_uid_fk": new_user_org.users_uid_fk,
-                    "organization_uid_fk": new_user_org.organization_uid_fk,
-                    "person_uid_fk": new_user_org.person_uid_fk,
-                    "user_name": new_user_org.user_name,
-                },
-            },
+            data= return_data            
         )
 
     except Exception as e:
@@ -114,43 +126,78 @@ def create_users():
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
 
 
-@users_bp.route("/update/<string:upd_type>", methods=["PUT"])
-@firebase_auth_required
-def update_users(upd_type):
+# update user_organizations_model
+@users_bp.route("/update", methods=["PUT"])
+#@firebase_auth_required
+def update_user_organizations():
     try:
-        user_data = Users.from_json(request.get_json())
+        data = request.get_json() or {}
+        user_org_payload = data.get("user_organizations", {})
 
-        if ((user_data.uid is None or user_data.uid == "") or (user_data.name is None or user_data.name == "")):
+        new_user_org = UserOrganizations.from_json(user_org_payload)
+
+        if ((new_user_org.uid is None or new_user_org.uid == "") 
+            or (new_user_org.allowed_app_routes is None or new_user_org.allowed_app_routes == "") 
+            or (new_user_org.user_roles_uid_fk is None or new_user_org.user_roles_uid_fk == "")):
+
             return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
-        
-        user = Users.query.filter_by(uid=user_data.uid).first()
-        if not user:
-            return json_response(uid=0, response="NOT_FOUND", status_code=404)
 
-        if upd_type == "u": # update user details
-            user.mail = user_data.mail
-            user.display_name = user_data.display_name
-            user.location = user_data.location
-            user.language_code = user_data.language_code
-            user.iso2_alpha = user_data.iso2_alpha
-            user.state = user_data.state
-            user.city = user_data.city
-            user.date_format = user_data.date_format
-            user.default_organization_uid_fk = user_data.default_organization_uid_fk
-            user.is_active = user_data.is_active
-        elif upd_type == "o": # update user organizations
-            user.user_organizations = user_data.user_organizations
-        elif upd_type == "s": # update sync status
-            user.sync_status = user_data.sync_status
-        elif upd_type == "p": # update pin code
-            user.pin_code = Users.bcrypt_hash(user_data.pin_code, user.uid) if user_data.pin_code else None
-            user.pin_updated_at = datetime.now()
-        else:
-            return json_response(uid=0, response="INVALID_UPDATE_TYPE", status_code=400)
+        # Resolve UID from Firebase: reuse existing user by email, otherwise create.
+        
+        user_org = UserOrganizations.query.filter_by(uid=new_user_org.uid).first()
+
+        if user_org is None:
+            return json_response(uid=0, response="NOT FOUND", status_code=400)  
+
+        user_org.user_roles_uid_fk = new_user_org.user_roles_uid_fk or user_org.user_roles_uid_fk
+        user_org.is_active = new_user_org.is_active if new_user_org.is_active is not None else user_org.is_active
+        user_org.sync_status = "PENDING"
+        user_org.allowed_app_routes = new_user_org.allowed_app_routes or user_org.allowed_app_routes
+        user_org.updated_at = datetime.now()
             
         db.session.commit()
 
-        return json_response(uid=user.uid, response="UPDATED_SUCCESSFULLY", status_code=200)
+        return json_response(
+            uid=user_org.uid,
+            response="CREATED_SUCCESSFULLY",
+            status_code=201,
+            data= {"user_organizations": user_org.to_dict()}
+        )
+
+    except Exception as e:
+        print("Error creating user:", e)
+        print(traceback.format_exc())
+        db.session.rollback()
+        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+
+    
+@users_bp.route("/profile", methods=["PUT"])
+#@firebase_auth_required
+def update_profile():
+    try:
+        data = request.get_json() or {}         
+        profile_data = data.get("user_profiles", {})  
+
+        if ((profile_data.uid is None or profile_data.uid == "") 
+            or (profile_data.mail is None or profile_data.mail == "")):   
+            return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
+
+        user_profile = UserProfiles.query.filter_by(uid=profile_data.uid).first()
+        if not user_profile:
+            return json_response(uid=0, response="NOT_FOUND", status_code=404)
+
+        user_profile.display_name = profile_data.display_name
+        user_profile.location = profile_data.location
+        user_profile.language_code = profile_data.language_code
+        user_profile.iso2_alpha = profile_data.iso2_alpha
+        user_profile.date_format = profile_data.date_format
+        user_profile.default_organization_uid_fk = profile_data.default_organization_uid_fk
+        user_profile.sync_status = profile_data.sync_status
+        user_profile.updated_at = profile_data.updated_at if profile_data.updated_at else datetime.now()
+            
+        db.session.commit()
+
+        return json_response(uid=user_profile.uid, response="UPDATED_SUCCESSFULLY", status_code=200)
 
     except IntegrityError as ie:
         db.session.rollback()
@@ -165,21 +212,24 @@ def update_users(upd_type):
         print(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
     
-@users_bp.route("/list", methods=["GET"])
+@users_bp.route("/list", methods=["POST"])
 #@firebase_auth_required
 def list_users(): 
 
     try:     
+        args = request.get_json() or {}
+        print("List users request args:", args)
+        
         # Get person_uid from query parameters
-        uid = request.args.get("u")
-        name = request.args.get("n")
-        org_uid = request.args.get("o")
-        person_uid = request.args.get("p")
-        join_org = request.args.get("j") # if "j"=1 join organization data in the response
-        limit = request.args.get("limit")  # limit of items per page
+        uid = args.get("u")
+        name = args.get("n")
+        org_uid = args.get("o")
+        person_uid = args.get("p")
+        join_org = args.get("j") # if "j"=1 join organization data in the response
+        limit = args.get("limit")  # limit of items per page
         order_by = request.args.get("order")  # field to order by
 
-        user_query = Users.query
+        user_query = UserProfiles.query
 
         if (uid is not None and uid != ""):
             user_query = user_query.filter_by(uid=uid)
@@ -187,9 +237,9 @@ def list_users():
             if (org_uid is not None and org_uid != ""):
                 user_query = user_query.filter_by(default_organization_uid_fk=org_uid)
                 if (name is not None and name != ""):
-                    user_query = user_query.filter(Users.name.ilike(f"%{name}%"))
+                    user_query = user_query.filter(UserProfiles.name.ilike(f"%{name}%"))
                 if (person_uid is not None and person_uid != ""):
-                    user_query = user_query.join(Users.user_organizations).filter(UserOrganizations.person_uid_fk == person_uid)
+                    user_query = user_query.join(UserProfiles.user_organizations).filter(UserOrganizations.person_uid_fk == person_uid)
             else:
                 return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
 
@@ -202,10 +252,10 @@ def list_users():
 
                 user_query = user_query.join(
                     Organization,
-                    Users.default_organization_uid_fk == Organization.uid,
-                ).options(contains_eager(Users.organization)) """
+                    UserProfiles.default_organization_uid_fk == Organization.uid,
+                ).options(contains_eager(UserProfiles.organization)) """
            
-        user_query = user_query.order_by(order_by if order_by is not None else Users.name.asc())
+        user_query = user_query.order_by(order_by if order_by is not None else UserProfiles.name.asc())
 
         # Print runnable SQL for easier copy/paste debugging in DB clients.
         #print(user_query.statement.compile(compile_kwargs={"literal_binds": True}))
@@ -218,7 +268,7 @@ def list_users():
         data = []
         for user in pagination.items:
             user_data = {}
-            user_data["user"] = user.to_dict(join_orgs=True)
+            user_data["user_profiles"] = user.to_dict(join_orgs=True)
            
             data.append(user_data)
         

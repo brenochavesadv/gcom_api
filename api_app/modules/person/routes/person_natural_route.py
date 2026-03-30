@@ -62,13 +62,13 @@ def new_person_natural():
             }), ErrorCodes.DUPLICATE_ENTRY.http_status
 
         # Create objects using factory
-        person = Person.person_data(person_natural_data)
+        person = Person.from_json(person_natural_data)
         person.person_uid = None  # Ensure a new record is created
         print(f'Person Data: {person.to_dict()}')   
         db.session.add(person)
         db.session.flush()
         
-        person_natural = PersonNatural.person_natural_data(person.person_uid, person_natural_data)
+        person_natural = PersonNatural.from_json(person.person_uid, person_natural_data)
         
         db.session.add(person_natural)
         db.session.commit()
@@ -112,7 +112,7 @@ def update_person_natural():
             }), 400
 
         
-        person_data = Person.person_data(person_natural_data)
+        person_data = Person.from_json(person_natural_data)
 
         # Check if Person exists
         person_record = Person.query.filter_by(uid=person_data.uid).first()
@@ -132,7 +132,7 @@ def update_person_natural():
         person_record.balance = person_data.balance
 
         # Build a temporary PersonNatural object from input to extract values
-        temp_person_natural = PersonNatural.person_natural_data(person_data.uid, person_natural_data)
+        temp_person_natural = PersonNatural.from_json(person_data.uid, person_natural_data)
         person_natural_record = PersonNatural.query.filter_by(person_uid_fk=person_data.uid).first()
         # Check if PersonNatural exists
         if not person_natural_record:

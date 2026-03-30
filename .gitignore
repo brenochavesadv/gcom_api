@@ -3,6 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 /.env
-/venv
+/.venv
 /__pycache__
 /security

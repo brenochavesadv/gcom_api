@@ -31,8 +31,7 @@ class Organization(db.Model):
     created_at = db.Column(db.DateTime)
     updated_at = db.Column(db.DateTime)
 
-    users = relationship("Users", back_populates="organization", lazy='select', foreign_keys="Users.default_organization_uid_fk")
-    users_roles = relationship("UsersRoles", back_populates="organization", lazy='select', foreign_keys="UsersRoles.main_organization_uid_fk")
+    user_roles = relationship("UserRoles", back_populates="organization", lazy='select', foreign_keys="UserRoles.main_organization_uid_fk")
     person = relationship("Person", back_populates="organization", lazy='select', foreign_keys="Person.main_organization_uid_fk")
     user_organizations = relationship("UserOrganizations", back_populates="organization", lazy='select', foreign_keys="UserOrganizations.organization_uid_fk")
 
@@ -70,4 +69,4 @@ class Organization(db.Model):
 # Imported here (after class definition) to register relationship targets with
 # SQLAlchemy's mapper registry before the first query resolves relationships.
 from .user_organizations_model import UserOrganizations  # noqa: E402
-from .users_roles_model import UsersRoles  # noqa: E402
+from .user_roles_model import UserRoles  # noqa: E402
