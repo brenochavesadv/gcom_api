@@ -63,7 +63,7 @@ def create_app():
     app.register_blueprint(health_bp, url_prefix='/health')
 
     from api_app.modules.person.routes.mail_route import mail_bp
-    app.register_blueprint(mail_bp, url_prefix='/mail')
+    app.register_blueprint(mail_bp, url_prefix='/pmail')
     
     from api_app.modules.person.routes.phone_route import phone_bp
     app.register_blueprint(phone_bp, url_prefix='/phone')
@@ -88,6 +88,9 @@ def create_app():
  
     from api_app.modules.sync.sync_route import sync_bp
     app.register_blueprint(sync_bp, url_prefix='/sync')
+ 
+    from api_app.modules.mail.smtp_routes import mail_bp
+    app.register_blueprint(mail_bp, url_prefix='/mail')
  
     from api_app.modules.users.routes.user_organizations_route import user_organizations_bp
     app.register_blueprint(user_organizations_bp, url_prefix='/u_orgs')

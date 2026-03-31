@@ -109,7 +109,11 @@ def create_users():
 
         db.session.commit()
 
-        return_data = {"user_profiles": user.to_dict(), "user_keys": user_keys.to_dict() if user_keys else None, "user_organizations": new_user_org.to_dict()}
+        return_data = {}
+        return_data["user_profiles"] = user.to_dict()
+        return_data["user_profiles"]["user_keys"] = [user_keys.to_dict() if user_keys else None]
+        return_data["user_profiles"]["user_organizations"] = [new_user_org.to_dict()]
+        
         print("User created successfully! return_data: ", return_data)
 
         return json_response(
@@ -176,28 +180,32 @@ def update_user_organizations():
 def update_profile():
     try:
         data = request.get_json() or {}         
-        profile_data = data.get("user_profiles", {})  
+        profile_data = UserProfiles.from_json(data.get("user_profiles", {}))
 
         if ((profile_data.uid is None or profile_data.uid == "") 
-            or (profile_data.mail is None or profile_data.mail == "")):   
+            or (profile_data.display_name is None or profile_data.display_name == "")):   
             return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
 
-        user_profile = UserProfiles.query.filter_by(uid=profile_data.uid).first()
-        if not user_profile:
+        new_profile = UserProfiles.query.filter_by(uid=profile_data.uid).first()
+        if not new_profile:
             return json_response(uid=0, response="NOT_FOUND", status_code=404)
 
-        user_profile.display_name = profile_data.display_name
-        user_profile.location = profile_data.location
-        user_profile.language_code = profile_data.language_code
-        user_profile.iso2_alpha = profile_data.iso2_alpha
-        user_profile.date_format = profile_data.date_format
-        user_profile.default_organization_uid_fk = profile_data.default_organization_uid_fk
-        user_profile.sync_status = profile_data.sync_status
-        user_profile.updated_at = profile_data.updated_at if profile_data.updated_at else datetime.now()
+        new_profile.display_name = profile_data.display_name
+        new_profile.location = profile_data.location
+        new_profile.language_code = profile_data.language_code
+        new_profile.iso2_alpha = profile_data.iso2_alpha
+        new_profile.date_format = profile_data.date_format
+        new_profile.default_organization_uid_fk = profile_data.default_organization_uid_fk
+        new_profile.updated_at = profile_data.updated_at if profile_data.updated_at else datetime.now()
             
         db.session.commit()
 
-        return json_response(uid=user_profile.uid, response="UPDATED_SUCCESSFULLY", status_code=200)
+        return json_response(
+            uid=new_profile.uid, 
+            response="UPDATED_SUCCESSFULLY", 
+            status_code=200,
+            data= {"user_profiles": new_profile.to_dict()}
+            )
 
     except IntegrityError as ie:
         db.session.rollback()
@@ -208,7 +216,7 @@ def update_profile():
     
     except Exception as e:
         db.session.rollback()
-        print("Error updating users:", e)
+        print("Error updating user_profiles:", e)
         print(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
     
@@ -283,5 +291,67 @@ def list_users():
 
     except Exception as e:
         print("Error listing users:", e)
+        print(traceback.format_exc())
+        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+
+    
+@users_bp.route("/gk", methods=["POST"])
+#@firebase_auth_required
+def get_user_keys(): 
+
+    try:     
+        args = request.get_json() or {}        
+        # Get person_uid from query parameters
+        uid = args.get("u")
+      
+        if (uid is None or uid == ""):
+            return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
+
+        _user_keys = UserKeys.query.get(uid)
+        
+        return json_response(
+            response = "OK",
+            status_code = 200,
+            data = {"user_keys": _user_keys.to_dict() if _user_keys else None}
+        )
+
+    except Exception as e:
+        print("Error listing users:", e)
+        print(traceback.format_exc())
+        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+
+    
+@users_bp.route("/uk", methods=["PUT"])
+#@firebase_auth_required
+def update_user_keys(): 
+
+    try:     
+        args = request.get_json() or {}        
+        # Get person_uid from query parameters
+        uid = args.get("u")
+        pin = args.get("p")
+        pw = args.get("pw")
+      
+        if (uid is None or uid == "") or (pin is None or pin == "") or (pw is None or pw == ""):
+            return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
+
+        _query = UserKeys.query.filter_by(user_profiles_uid_fk=uid)
+        _user_keys = _query.first()
+
+        if _user_keys:
+            _user_keys.pin_code = UserKeys.bcrypt_hash(pin, uid)
+            _user_keys.pw_offline = UserKeys.bcrypt_hash(pw, uid)
+            _user_keys.sync_status = "PENDING"
+            _user_keys.updated_at = datetime.now()
+            db.session.commit()
+        
+        return json_response(
+            response = "OK",
+            status_code = 200,
+            data = {"user_keys": _user_keys.to_dict() if _user_keys else None}
+        )
+
+    except Exception as e:
+        print("Error updating user keys:", e)
         print(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)

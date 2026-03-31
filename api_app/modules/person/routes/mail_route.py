@@ -8,7 +8,7 @@ from flasgger import swag_from
 from sqlalchemy.exc import IntegrityError
 import traceback
 
-mail_bp = Blueprint("mail", __name__)
+mail_bp = Blueprint("pmail", __name__)
 
 @mail_bp.route("/create", methods=["POST"])
 @firebase_auth_required
@@ -99,14 +99,14 @@ def update_mail():
         print(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
 
-@mail_bp.route("/list", methods=["GET"])
+@mail_bp.route("/list", methods=["POST"])
 @firebase_auth_required
 def list_mail():
     try:     
         # Get person_uid from query parameters
-        uid = request.args.get("u") 
-        person_uid = request.args.get("p")
-
+        data = request.get_json()
+        uid = data.get("u")
+        person_uid = data.get("p")
 
         if (uid is not None and uid != ""):
             print("Fetching mail by uid:", uid)

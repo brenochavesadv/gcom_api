@@ -112,13 +112,14 @@ def update_phone():
         print(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
     
-@phone_bp.route("/list", methods=["GET"])
+@phone_bp.route("/list", methods=["POST"])
 @firebase_auth_required
 def list_phone_by_person():
     try:     
         # Get person_uid from query parameters
-        uid = request.args.get("u")
-        person_uid = request.args.get("p")
+        data = request.get_json()
+        uid = data.get("u")
+        person_uid = data.get("p")
 
         if (uid is not None and uid != ""):
             phones = Phone.query.filter_by(uid=uid).first()

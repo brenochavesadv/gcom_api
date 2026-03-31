@@ -16,23 +16,21 @@ from api_app.modules.person.models import person_model
 
 person_natural_bp = Blueprint("personnatural", __name__)
 
-@person_natural_bp.route("/list", methods=["GET"])
+@person_natural_bp.route("/list", methods=["POST"])
 #@firebase_auth_required
 @swag_from(person_natural_docs["list_person_natural"])
 def list_person_natural():
-    return get_person(all_data=True)
+    data = request.get_json()
+    return get_person(all_data=True, data=data)
 
 @person_natural_bp.route("/new", methods=["POST"])
 @firebase_auth_required
 @swag_from(person_natural_docs["create_person_natural"])
 def new_person_natural():
-    print("Creating new person natural...")
     try:
         data = request.get_json()
         person_natural_data = data.get("person_natural", {})
-
-        print('Person Natural Data:', person_natural_data)
-        
+                
         # Validate required fields and report which are missing
         required_fields = ["organization_uid_fk", "name", "id_number"]
         missing = [f for f in required_fields if not person_natural_data.get(f)]
@@ -64,7 +62,7 @@ def new_person_natural():
         # Create objects using factory
         person = Person.from_json(person_natural_data)
         person.person_uid = None  # Ensure a new record is created
-        print(f'Person Data: {person.to_dict()}')   
+
         db.session.add(person)
         db.session.flush()
         
@@ -98,8 +96,6 @@ def update_person_natural():
     try:
         data = request.get_json()
         person_natural_data = data.get("person_natural", {})
-
-        print('Person Natural Data:', person_natural_data)
         
         # Validate required fields and report which are missing
         required_fields = ["uid", "name", "id_number"]
@@ -182,8 +178,6 @@ def update_person_natural():
 
         # Commit all changes
         db.session.commit()
-
-        print(f"Successfully updated Person ID: {person_data.uid}")
 
         # Refresh to get actual database state
         db.session.refresh(person_natural_record)

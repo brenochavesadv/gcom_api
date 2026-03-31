@@ -8,8 +8,7 @@ class UserKeys(db.Model):
     #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
     __tablename__ = "user_keys"
 
-    uid = db.Column(db.String(36), primary_key=True)
-    user_profiles_uid_fk = db.Column(db.String(36), db.ForeignKey(UserProfiles.uid), nullable=False, unique=True)
+    user_profiles_uid_fk = db.Column(db.String(36), db.ForeignKey(UserProfiles.uid),  primary_key=True)
     sync_status = db.Column(db.String(10), default="PENDING")
     pin_code = db.Column(db.String(255), nullable=False) 
     pw_offline = db.Column(db.String(255))
@@ -20,7 +19,6 @@ class UserKeys(db.Model):
 
     def to_dict(self):
         return {            
-            'uid': self.uid,
             'user_profiles_uid_fk': self.user_profiles_uid_fk,
             'sync_status': self.sync_status,
             'pin_code': self.pin_code,      
@@ -31,7 +29,6 @@ class UserKeys(db.Model):
 
     def from_json(json_data):
         return UserKeys(
-            uid=json_data.get("uid"),
             user_profiles_uid_fk=json_data.get("user_profiles_uid_fk"),
             sync_status=json_data.get("sync_status"),
             pin_code=json_data.get("pin_code"),

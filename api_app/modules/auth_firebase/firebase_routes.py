@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 
 from api_app.constants.response import json_response
-from .firebase_services import verify_firebase_token, get_user_by_uid, get_user_by_email
+from .firebase_services import verify_firebase_token, get_user_by_uid, get_user_by_email, notify_user
      
 firebase_bp = Blueprint('firebase', __name__)
 

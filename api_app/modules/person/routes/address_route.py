@@ -43,13 +43,13 @@ def list_units():
         ##traceback.print_exc() 
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
     
-@address_bp.route("/list", methods=["GET"])
+@address_bp.route("/list", methods=["POST"])
 @firebase_auth_required
 def list_address():
     try:
-
-        uid = request.args.get("u")
-        person_uid = request.args.get("p")
+        data = request.get_json()
+        uid = data.get("u")
+        person_uid = data.get("p")
         address = []
 
         if (uid is not None and uid != ""):

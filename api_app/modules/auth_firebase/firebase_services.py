@@ -2,9 +2,8 @@ import os
 import json
 import base64
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_admin import credentials, auth, messaging
 from flask import current_app
-
 
 def init_app(app):
     """Initialize Firebase admin SDK using Flask `app` config or environment."""

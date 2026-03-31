@@ -14,21 +14,21 @@ import traceback
 
 person_bp = Blueprint("person", __name__)
 
-def get_person(all_data=False):
+def get_person(all_data=False, data=None):
     
     try:
-        uid = request.args.get("u") if request.args.get("u") else None
-        name = request.args.get("n")
-        id_number = request.args.get("i")
-        name_or_id_number = request.args.get("ni") # search by name or id number
-        active = request.args.get("a") # only active persons
-        supplier = request.args.get("s")
-        person_type = int(request.args.get("t")) if request.args.get("t") else None
-        organization = request.args.get("o")
-        only_users = request.args.get("ou") # inner join with users table (return only persons that are also users)
-        limit = request.args.get("limit")  # limit of items per page
-        order_by = request.args.get("order")  # field to order by
-        oaf = request.args.get("oaf") if request.args.get("oaf") is not None else False  # only active fields (mails, phones, addresses)
+        uid = data.get("u") if data.get("u") else None
+        name = data.get("n")
+        id_number = data.get("i")
+        name_or_id_number = data.get("ni") # search by name or id number
+        active = data.get("a") # only active persons
+        supplier = data.get("s")
+        person_type = int(data.get("t")) if data.get("t") else None
+        organization = data.get("o")
+        only_users = data.get("ou") # inner join with users table (return only persons that are also users)
+        limit = data.get("limit")  # limit of items per page
+        order_by = data.get("order")  # field to order by
+        oaf = data.get("oaf") if data.get("oaf") is not None else False  # only active fields (mails, phones, addresses)
 
         if organization is None:
             return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
@@ -123,8 +123,9 @@ def get_person(all_data=False):
         print(traceback.format_exc())
         return json_response(response="INTERNAL_ERROR", status_code=500)
 
-@person_bp.route("/list", methods=["GET"])
+@person_bp.route("/list", methods=["POST"])
 #@firebase_auth_required
 @swag_from(person_docs["list_person"])
 def list_person():
-    return get_person(all_data=False)
+    data = request.get_json()
+    return get_person(all_data=False, data=data)

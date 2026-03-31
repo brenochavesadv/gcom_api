@@ -17,11 +17,12 @@ from api_app.modules.person.models import person_model
 
 person_legal_bp = Blueprint("PersonLegal", __name__)
 
-@person_legal_bp.route("/list", methods=["GET"])
+@person_legal_bp.route("/list", methods=["POST"])
 @firebase_auth_required
 #@swag_from(person_legal_docs["list_person_legal"])
 def list_person_legal():
-    return get_person(all_data=True)
+    data = request.get_json()
+    return get_person(all_data=True, data=data)
 
 
 @person_legal_bp.route("/new", methods=["POST"])
@@ -30,7 +31,6 @@ def list_person_legal():
 def new_person_legal():
     try:
         data = request.get_json()
-        print(f"data received: {data}")
         person_legal_data = data.get("person_legal", {})
         
         # Validate required fields using factory
@@ -62,7 +62,7 @@ def new_person_legal():
         # Create objects using factory
         person = Person.from_json(person_legal_data)
         person.person_uid = None  # Ensure UID is None for new record
-        print(f'Person Data: {person.to_dict()}')   
+
         db.session.add(person)
         db.session.flush()
 
@@ -95,7 +95,6 @@ def new_person_legal():
 def update_person_legal():
     try:
         data = request.get_json()
-        print(f"data received: {data}")
 
         # Extract data from nested structure
         person_data = data.get("person", {})
@@ -170,8 +169,6 @@ def update_person_legal():
 
         # Commit all changes
         db.session.commit()
-
-        print(f"Successfully updated Person UID: {existing.person_uid}")
 
         return jsonify({
             "uid": existing.person_uid,
