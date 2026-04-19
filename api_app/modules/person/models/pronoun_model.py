@@ -3,7 +3,7 @@ from main import db
 from sqlalchemy.orm import relationship
 
 class Pronoun(db.Model):
-    #__bind_key__ = 'main' 
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "pronoun"
 
     uid = db.Column(db.Strin(14), primary_key=True)

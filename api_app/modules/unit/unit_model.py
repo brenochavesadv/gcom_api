@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 
 
 class Unit(db.Model):
-    __bind_key__ = 'main'
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "unidades"
     
     unit_uid = db.Column("unidades_id", db.Integer, primary_key=True, autoincrement=True)

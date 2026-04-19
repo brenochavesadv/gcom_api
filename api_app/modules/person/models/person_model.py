@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from pytz import UTC
 
 class Person(db.Model):
-    #__bind_key__ = 'main'
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "pescod"
 
     id = db.Column('pescod_id', db.Integer, primary_key=True)
@@ -29,7 +29,7 @@ class Person(db.Model):
     person_legal = relationship("PersonLegal", back_populates="person", uselist=False, foreign_keys="[PersonLegal.person_uid_fk]")
     user_organizations = relationship("UserOrganizations", back_populates="person", lazy='select', foreign_keys="[UserOrganizations.person_uid_fk]")
     organization = relationship("Organization", back_populates="person", foreign_keys=[main_organization_uid_fk])
-
+    
     #pronoun = relationship("Pronoun", back_populates="persons", lazy='select')
 
     def to_dict(self):

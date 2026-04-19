@@ -4,7 +4,7 @@ from main import db
 from sqlalchemy.orm import relationship
 
 class Phone(db.Model):
-    #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "telefones"
     
     id = db.Column('telefones_id', db.Integer, primary_key=True)

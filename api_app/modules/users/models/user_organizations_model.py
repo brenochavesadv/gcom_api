@@ -9,7 +9,7 @@ from .organization_model import Organization
 from .user_roles_model import UserRoles
 
 class UserOrganizations(db.Model):
-    #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "user_organizations"
     
     uid = db.Column(db.String(36), primary_key=True, unique=True)

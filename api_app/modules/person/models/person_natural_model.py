@@ -4,7 +4,7 @@ from main import db
 from sqlalchemy.orm import relationship
 
 class PersonNatural(db.Model):
-    #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "pesfis"
 
     id = db.Column("pesfis_id", db.Integer, primary_key=True)

@@ -20,10 +20,7 @@ logger = logging.getLogger('alembic.env')
 # Ensure all models are imported so their Table objects register and binds populate
 # Import models for the default (main) bind
 from api_app.modules.acl.acl_models import AclRoles, AclPermissions, AclRolePermissions
-from api_app.modules.users.models.user_roles_model import UsersRoles
-from api_app.modules.users.models.user_profiles_model import Users
-from api_app.modules.users.models.user_organizations_model import UserOrganizations
-from api_app.modules.users.models.organization_model import Organization
+from api_app.modules.fleet.models.fipe_models import FipeBrand, FipeVehycle, FipeSyncControl
 from api_app.modules.person.models.address_model import Address
 from api_app.modules.person.models.city_model import City
 from api_app.modules.person.models.mail_model import Mail
@@ -32,6 +29,10 @@ from api_app.modules.person.models.person_legal_model import PersonLegal
 from api_app.modules.person.models.person_natural_model import PersonNatural
 from api_app.modules.person.models.pronoun_model import Pronoun
 from api_app.modules.person.models.phone_model import Phone
+from api_app.modules.users.models.user_roles_model import UsersRoles
+from api_app.modules.users.models.user_profiles_model import Users
+from api_app.modules.users.models.user_organizations_model import UserOrganizations
+from api_app.modules.users.models.organization_model import Organization
 
 # Import models for the 'sales' bind
 #from api_app.modules.product.models.product_brand_model import ProductBrand

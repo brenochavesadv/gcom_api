@@ -19,8 +19,8 @@ def send_mail_to_user():
         return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
     
     try:
-        smtp_info = smtp_info()
-        result = send_email_smtp(smtp_info, service_name="Notification", body=body, subject=title, receiver_email=None)
+        smtp_manager= smtp_info()
+        result = send_email_smtp(smtp_manager, service_name="Notification", body=body, subject=title, receiver_email=None)
         
         if result:
             return json_response(uid=1, response="EMAIL_SENT", status_code=200)

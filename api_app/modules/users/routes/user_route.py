@@ -1,8 +1,10 @@
+import random
 import uuid
+import traceback
 
 from main import db
 from datetime import datetime
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 from ....constants.response import RESPONSE, json_response
 from ..models.user_profiles_model import UserProfiles   
 from ..models.user_organizations_model import UserOrganizations
@@ -10,11 +12,9 @@ from ..models.user_roles_model import UserRoles
 from ..models.user_keys_model import UserKeys
 from ...auth_firebase.firebase_decorators import firebase_auth_required
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import inspect
-import traceback
 from ..models.organization_model import Organization
-from sqlalchemy.orm import contains_eager
 from firebase_admin import auth
+from ...mail.smtp_services import send_email_smtp, smtp_info
 
 users_bp = Blueprint("users", __name__)
 
@@ -355,3 +355,55 @@ def update_user_keys():
         print("Error updating user keys:", e)
         print(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+
+    
+@users_bp.route("/rk", methods=["POST"])
+#@firebase_auth_required
+def recover_user_keys(): 
+
+    try:     
+        args = request.get_json() or {}        
+        # Get person_uid from query parameters
+        uid = args.get("u")
+        email = args.get("e")
+        offline_pw = args.get("o") or False
+        app_name = args.get("a") or "gcom_api"
+
+        print(f"Recover user keys request received with uid: {uid}, email: {email}, offline_pw: {offline_pw}")
+      
+        if (uid is None or uid == "") or (email is None or email == ""):
+            return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
+
+        _user_keys = UserKeys.query.get(uid)
+        if _user_keys is None:
+            return json_response(uid=0, response="NOT_FOUND", status_code=404)
+
+        key6dig = random.randint(100000, 999999)  # Generate a random 6-digit code
+        key8dig = random.randint(10000000, 99999999) # Generate a random 8-digit code
+
+        _user_keys.pin_code = UserKeys.bcrypt_hash(key6dig, uid)
+        _user_keys.pw_offline = UserKeys.bcrypt_hash(key8dig, uid)
+        _user_keys.sync_status = "PENDING"
+        _user_keys.updated_at = datetime.now()
+        db.session.commit()
+
+        body = f"PIN Code: {key6dig}"
+        if offline_pw:
+            body += f"\nOffline Password: {key8dig}"
+            
+        title = "Recovery Codes"
+
+        smtp_manager = smtp_info()
+        send_email_smtp(smtp_manager, service_name=app_name, body=body, subject=title, receiver_email=email)
+        
+        return json_response(
+            response = "OK",
+            status_code = 200,
+        )
+
+    except Exception as e:
+        print("Error recovering user keys:", e)
+        print(traceback.format_exc())
+        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+
+    

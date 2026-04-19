@@ -5,7 +5,7 @@ import bcrypt
 from .user_profiles_model import UserProfiles
 
 class UserKeys(db.Model):
-    #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "user_keys"
 
     user_profiles_uid_fk = db.Column(db.String(36), db.ForeignKey(UserProfiles.uid),  primary_key=True)

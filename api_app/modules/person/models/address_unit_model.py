@@ -4,7 +4,7 @@ from main import db
 from sqlalchemy.orm import relationship
 
 class AddressUnit(db.Model):
-    #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "address_unit"
 
     uid = db.Column(db.String(10), nullable=True, primary_key=True, comment='based on US Postal Service Standard abbreviation')

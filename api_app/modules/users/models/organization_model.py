@@ -2,7 +2,7 @@ from main import db
 from sqlalchemy.orm import relationship
 
 class Organization(db.Model):
-    #__bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
+    __bind_key__ = 'DB_MAIN'  # SQLAlchemy to use the 'main' bind
     __tablename__ = "instit"
 
     id = db.Column("instit_id", db.Integer, primary_key=True)

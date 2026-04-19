@@ -4,7 +4,7 @@ from sqlalchemy.dialects.mysql import LONGTEXT
 
 
 class OrganizationRoutes(db.Model):
-    #__bind_key__ = 'main'
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "organization_routes"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

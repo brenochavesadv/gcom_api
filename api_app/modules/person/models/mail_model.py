@@ -3,7 +3,7 @@ from main import db
 from sqlalchemy.orm import relationship
 
 class Mail(db.Model):
-    #__bind_key__ = 'main' 
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "mails"
 
     uid = db.Column('mails_id', db.Integer, primary_key=True)

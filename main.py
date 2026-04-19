@@ -33,6 +33,9 @@ swagger = Swagger(template=swagger_template) # adds authorization header to all 
 import sys
 import os
 
+# Variável global para o caminho da raiz do projeto
+root_path = os.path.abspath(os.path.dirname(__file__))
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object("config.Config")
@@ -49,15 +52,14 @@ def create_app():
     from api_app.modules.person.routes.address_route import address_bp
     app.register_blueprint(address_bp, url_prefix='/address')
 
-    #from api_app.modules.country.country_route import country_bp
-    #app.register_blueprint(country_bp, url_prefix='/country')
-
     from api_app.modules.utils.error_codes_route import errors_bp
     app.register_blueprint(errors_bp, url_prefix='/errors')
 
-    # Initialize Firebase admin SDK (reads env or security file)
     from api_app.modules.auth_firebase.firebase_services import init_app as init_firebase
     init_firebase(app)
+
+    from api_app.modules.vehycles.vehycles_routes import vehycles_bp
+    app.register_blueprint(vehycles_bp, url_prefix='/vehycles')
 
     from test_health import health_bp
     app.register_blueprint(health_bp, url_prefix='/health')

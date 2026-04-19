@@ -1,7 +1,7 @@
 from main import db
 
 class SyncQueue(db.Model):
-  # __bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "sync_queue"
 
     id = db.Column(db.Integer, primary_key=True)

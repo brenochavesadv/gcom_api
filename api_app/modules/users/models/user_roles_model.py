@@ -4,7 +4,7 @@ from .organization_model import Organization
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 class UserRoles(db.Model):
-  # __bind_key__ = 'main'  # SQLAlchemy to use the 'main' bind
+    __bind_key__ = 'DB_MAIN' 
     __tablename__ = "user_roles"
 
     uid = db.Column(db.String(36), unique=True, primary_key=True)
