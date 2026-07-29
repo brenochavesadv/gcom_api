@@ -2,10 +2,12 @@
 # Funções para buscar dados da FIPE API (Parallelum) e salvar no banco local
 
 from datetime import datetime, timedelta
+import threading
 
 from main import db
 from ..models.fipe_models import FipeBrand, FipeSyncControl, FipeVehycle
 from ..models.vehycle_models import VehyclesTypes
+from flask import current_app
 
 import requests
 import uuid
@@ -101,6 +103,23 @@ def fetch_fipe_vehycles(vehicle_type: VehyclesTypes , brand_code: str):
 def fetch_fipe_years_by_model(vehycle_type: str , brand_code: str, vehycle_code: str):
 	"""Busca veículos da FIPE para o tipo de veículo especificado."""
 
+	_vehycle = FipeVehycle.query.filter_by(
+		fipe_code=vehycle_code,
+		fipe_brand_code_fk=brand_code,
+		type=vehycle_type,
+	).first()
+
+	if _vehycle is not None and _vehycle.model_years:
+		# Retorna dado local imediatamente e atualiza em segundo plano.
+		_schedule_fipe_years_refresh_in_background(vehycle_type, brand_code, vehycle_code)
+		return _vehycle.to_dict()
+
+	return _sync_fipe_years_by_model(vehycle_type, brand_code, vehycle_code)
+
+
+def _sync_fipe_years_by_model(vehycle_type: str, brand_code: str, vehycle_code: str):
+	"""Sincroniza anos do modelo com FIPE e persiste no banco local."""
+
 	url = f"{BASE_URL}/{vehycle_type}/brands/{brand_code}/models/{vehycle_code}/years"
 
 	response = requests.get(url)
@@ -128,7 +147,35 @@ def fetch_fipe_years_by_model(vehycle_type: str , brand_code: str, vehycle_code:
 
 	return None
 
+
+def _schedule_fipe_years_refresh_in_background(vehycle_type: str, brand_code: str, vehycle_code: str):
+	"""Dispara atualização de anos em background sem bloquear a resposta."""
+	app = current_app._get_current_object()
+
+	def _refresh():
+		with app.app_context():
+			try:
+				_sync_fipe_years_by_model(vehycle_type, brand_code, vehycle_code)
+			except Exception as e:
+				current_app.logger.debug(f"Background FIPE years refresh failed ({vehycle_type}/{brand_code}/{vehycle_code}): {e}")
+
+	threading.Thread(target=_refresh, daemon=True).start()
+
 def update_fipe_vehycles_from_brand(brand_code: str , vehicle_type: VehyclesTypes):
+	"""Retorna cache local e sincroniza com FIPE em background quando possível."""
+	cached = FipeVehycle.query.filter_by(
+		fipe_brand_code_fk=brand_code,
+		type=vehicle_type.value,
+	).order_by(FipeVehycle.name).all()
+
+	if cached:
+		_schedule_fipe_vehycles_refresh_in_background(brand_code, vehicle_type)
+		return [vehycle.to_dict() for vehycle in cached]
+
+	return _sync_fipe_vehycles_from_brand(brand_code, vehicle_type)
+
+
+def _sync_fipe_vehycles_from_brand(brand_code: str, vehicle_type: VehyclesTypes):
 	"""Busca e armazena veículos da FIPE no banco local."""
 	vehycles_data = fetch_fipe_vehycles(vehicle_type, brand_code)
 
@@ -193,6 +240,20 @@ def update_fipe_vehycles_from_brand(brand_code: str , vehicle_type: VehyclesType
 	db.session.commit()
 
 	return result
+
+
+def _schedule_fipe_vehycles_refresh_in_background(brand_code: str, vehicle_type: VehyclesTypes):
+	"""Dispara sincronização da marca em background sem bloquear a resposta."""
+	app = current_app._get_current_object()
+
+	def _refresh():
+		with app.app_context():
+			try:
+				_sync_fipe_vehycles_from_brand(brand_code, vehicle_type)
+			except Exception as e:
+				current_app.logger.debug(f"Background FIPE vehycles refresh failed ({vehicle_type.value}/{brand_code}): {e}")
+
+	threading.Thread(target=_refresh, daemon=True).start()
 
 def update_all_fipe_vehycles():
 	"""Atualiza todos os veículos de carros, motos e caminhões da FIPE no banco local."""

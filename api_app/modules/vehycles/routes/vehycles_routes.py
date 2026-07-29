@@ -1,102 +1,92 @@
-import random
 import uuid
 import traceback
 
 import requests
-from flask_sqlalchemy import pagination
 from sqlalchemy import or_
 
-from api_app.modules.person.models.person_model import Person
 from main import db
-from flask import Blueprint, request
-from ...constants.response import RESPONSE, json_response
-from ..auth_firebase.firebase_decorators import firebase_auth_required
-from .models.vehycle_models import VehyclesTypes
+from flask import Blueprint, current_app, request
+from ...utils.api_response import ApiResponse, json_response
+from ...auth_firebase.firebase_decorators import firebase_auth_required
+from ..models.vehycle_models import VehyclesTypes
 
 vehycles_bp = Blueprint("vehycles", __name__)
 
 @vehycles_bp.route("ufb", methods=["GET"])
-#@firebase_auth_required
+@firebase_auth_required
 def update_fipe_brands():
     try:
-        from .services.fipe_parallelum_services import update_all_fipe_brands
+        from ..services.fipe_parallelum_services import update_all_fipe_brands
         data = update_all_fipe_brands()
 
         if data is None:
             return json_response(
-                response="NO_DATA_UPDATED",
-                status_code=500,
-                data=[]
+                response=ApiResponse.NO_DATA_UPDATED,
             )
 
         return json_response(
-            response="UPDATED_SUCCESSFULLY",
-            status_code=201,
+            response=ApiResponse.UPDATED_SUCCESSFULLY,
             data={"fipe_brands": data}
         )
 
     except requests.RequestException as e:
-        print("FIPE request failed:", e)
-        print(traceback.format_exc())
+        current_app.logger.debug("FIPE request failed:", e)
+        current_app.logger.debug(traceback.format_exc())
         db.session.rollback()
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=502)
+        return json_response(response=ApiResponse.INTERNAL_ERROR)
     except ValueError as e:
-        print("Invalid parameters for FIPE years:", e)
-        return json_response(response="MISSING_FIELDS", status_code=400, data=[])
+        current_app.logger.debug("Invalid parameters for FIPE years:", e)
+        return json_response(response=ApiResponse.MISSING_FIELDS)
     except Exception as e:
-        print("Error creating user:", e)
-        print(traceback.format_exc())
+        current_app.logger.debug("Error creating user:", e)
+        current_app.logger.debug(traceback.format_exc())
         db.session.rollback()
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+        return json_response(response=ApiResponse.INTERNAL_ERROR)
 
 
 @vehycles_bp.route("ufvy", methods=["GET"])
-#@firebase_auth_required
+@firebase_auth_required
 def update_fipe_vehycles_years():
 
     vehycle_type = (request.args.get("t") or "").lower()
     fipe_brand_code = (request.args.get("b") or "").lower()
     fipe_vehycle_code = (request.args.get("v") or "").lower()
 
-    print(f"Received parameters - Type: {vehycle_type}, Brand Code: {fipe_brand_code}, Vehycle Code: {fipe_vehycle_code}")
+    current_app.logger.debug(f"Received parameters - Type: {vehycle_type}, Brand Code: {fipe_brand_code}, Vehycle Code: {fipe_vehycle_code}")
 
     if not fipe_brand_code or not vehycle_type or not fipe_vehycle_code:
         return json_response(
-            response="MISSING_FIELDS",
-            status_code=400,
-            data=[]
+            response=ApiResponse.MISSING_FIELDS
         )
 
     try:
-        from .services.fipe_parallelum_services import fetch_fipe_years_by_model
+        from ..services.fipe_parallelum_services import fetch_fipe_years_by_model
         data = fetch_fipe_years_by_model(vehycle_type, fipe_brand_code, fipe_vehycle_code)
 
         if data is None:
             return json_response(
-                response="NO_DATA_UPDATED",
-                status_code=500,
-                data=[]
+                response=ApiResponse.NO_DATA_UPDATED,
             )
 
         return json_response(
-            response="UPDATED_SUCCESSFULLY",
-            status_code=201,
+            response=ApiResponse.UPDATED_SUCCESSFULLY,
             data={"fipe_vehycle": data}
         )
 
     except requests.RequestException as e:
-        print("FIPE request failed:", e)
-        print(traceback.format_exc())
+        current_app.logger.debug("FIPE request failed:", e)
+        current_app.logger.debug(traceback.format_exc())
         db.session.rollback()
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=502)
+        return json_response(response=ApiResponse.INTERNAL_ERROR)
+    
     except Exception as e:
-        print("Error creating user:", e)
-        print(traceback.format_exc())
+        current_app.logger.debug("Error creating user:", e)
+        current_app.logger.debug(traceback.format_exc())
         db.session.rollback()
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+        return json_response(response=ApiResponse.INTERNAL_ERROR)
 
 @vehycles_bp.route("fvfb", methods=["GET"])
-#@firebase_auth_required
+@firebase_auth_required
 def fipe_vehycles_from_brand():
     try:
         vehycle_type = (request.args.get("t") or "").lower()
@@ -104,21 +94,17 @@ def fipe_vehycles_from_brand():
         
         if not fipe_brand_code or not vehycle_type:
             return json_response(
-                response="MISSING_FIELDS",
-                status_code=400,
-                data=[]
+                response=ApiResponse.MISSING_FIELDS
             )
 
         try:
             _type = VehyclesTypes(vehycle_type)
         except ValueError:
             return json_response(
-                response="MISSING_FIELDS",
-                status_code=400,
-                data=[]
+                response=ApiResponse.MISSING_FIELDS
             )
 
-        from .models.fipe_models import FipeSyncControl
+        from ..models.fipe_models import FipeSyncControl
         last_update = db.session.query(FipeSyncControl).filter_by(vehycle_brand=fipe_brand_code,type=_type.value).order_by(FipeSyncControl.vehycle_brand_last_update_at.desc()).first()
 
         from datetime import datetime, timedelta
@@ -129,42 +115,40 @@ def fipe_vehycles_from_brand():
             time_diff = datetime.now() - last_update.vehycle_brand_last_update_at
             
         if time_diff < timedelta(days=25):
-            print(f"Using cached data for brand {fipe_brand_code} and type {_type.value}, last updated at {last_update.vehycle_brand_last_update_at}")
-            from .models.fipe_models import FipeVehycle
+            current_app.logger.debug(f"Using cached data for brand {fipe_brand_code} and type {_type.value}, last updated at {last_update.vehycle_brand_last_update_at}")
+            from ..models.fipe_models import FipeVehycle
             vehycles = FipeVehycle.query.filter_by(fipe_brand_code_fk=fipe_brand_code, type=_type.value).order_by(FipeVehycle.name).all()
             data = [vehycle.to_dict() for vehycle in vehycles]
 
         else:
-            print(f"Fetching new data for brand {fipe_brand_code} and type {_type.value} from FIPE API")
-            from .services.fipe_parallelum_services import update_fipe_vehycles_from_brand
+            current_app.logger.debug(f"Fetching new data for brand {fipe_brand_code} and type {_type.value} from FIPE API")
+            from ..services.fipe_parallelum_services import update_fipe_vehycles_from_brand
             data = update_fipe_vehycles_from_brand(fipe_brand_code, _type)
 
         if not data:
             return json_response(
-                response="NO_DATA",
-                status_code=500,
+                response=ApiResponse.NO_DATA,
                 data=[]
             )
 
         return json_response(
-                response="OK",
-                status_code=200,
+                response=ApiResponse.OK,
                 data={"fipe_vehycles": data}
             )
 
     except Exception as e:
-        print("Error creating user:", e)
-        print(traceback.format_exc())
+        current_app.logger.debug("Error creating user:", e)
+        current_app.logger.debug(traceback.format_exc())
         db.session.rollback()
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+        return json_response(response=ApiResponse.INTERNAL_ERROR)
     
 @vehycles_bp.route("lr", methods=["POST"])
-#@firebase_auth_required
+@firebase_auth_required
 def list_registered():
     try:
-        from .models.vehycle_models import Vehycles
+        from ..models.vehycle_models import Vehycles
         data = request.get_json()
-        print("Received data:", data)
+        current_app.logger.debug("Received data:", data)
         o = data.get("o")
         np = data.get("np") # nickname or plate
         name = data.get("name")
@@ -174,9 +158,7 @@ def list_registered():
 
         if (o is None or o == ""):
             return json_response(
-                response="MISSING_FIELDS",
-                status_code=400,
-                data=[]
+                response=ApiResponse.MISSING_FIELDS
             )
             
         _query = Vehycles.query.filter_by(organization_uid_fk=o)
@@ -204,8 +186,7 @@ def list_registered():
             data.append(vehycle.to_dict())
 
         return json_response(
-            response = "OK",
-            status_code = 200,
+            response = ApiResponse.OK,
             data = data,
             total = pagination.total,
             page = pagination.page,
@@ -213,27 +194,25 @@ def list_registered():
         )
 
     except Exception as e:
-        print("Error creating user:", e)
-        print(traceback.format_exc())
+        current_app.logger.debug("Error creating user:", e)
+        current_app.logger.debug(traceback.format_exc())
         db.session.rollback()
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+        return json_response(response=ApiResponse.INTERNAL_ERROR)
 
-@vehycles_bp.route("ui", methods=["POST"])
-#@firebase_auth_required
+@vehycles_bp.route("uiv", methods=["POST"])
+@firebase_auth_required
 def upinsert_vehycle():
     try:
-        from .models.vehycle_models import Vehycles
+        from ..models.vehycle_models import Vehycles
         data = request.get_json()
-        print("Received data for upsert:", data)
+        current_app.logger.debug("Received data for upsert:", data)
 
         _vehycle = Vehycles.from_json(data)
 
         if (_vehycle.organization_uid_fk is None or _vehycle.organization_uid_fk == "") or (_vehycle.type is None or _vehycle.type == ""):
-            print("Missing required fields: organization_uid_fk or type")
+            current_app.logger.debug("Missing required fields: organization_uid_fk or type")
             return json_response(
-                response="MISSING_FIELDS",
-                status_code=400,
-                data=[]
+                response=ApiResponse.MISSING_FIELDS
             )
 
         _selected = Vehycles.query.filter_by(uid=_vehycle.uid, organization_uid_fk=_vehycle.organization_uid_fk).first() if _vehycle.uid else None
@@ -242,24 +221,55 @@ def upinsert_vehycle():
             for key, value in data.items():
                 setattr(_selected, key, value)
             db.session.add(_selected)
-            message = "UPDATED_SUCCESSFULLY"
+            message = ApiResponse.UPDATED_SUCCESSFULLY
             persisted = _selected
         else:
             _vehycle.uid = str(uuid.uuid4())
             db.session.add(_vehycle)
-            message = "CREATED_SUCCESSFULLY"
+            message = ApiResponse.CREATED_SUCCESSFULLY
             persisted = _vehycle
 
         db.session.commit()
 
         return json_response(
             response=message,
-            status_code=201,
             data={"vehycle": persisted.to_dict()}
         )
 
     except Exception as e:
-        print("Error creating/updating vehycle:", e)
-        print(traceback.format_exc())
+        current_app.logger.debug("Error creating/updating vehycle:", e)
+        current_app.logger.debug(traceback.format_exc())
         db.session.rollback()
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+        return json_response(response=ApiResponse.INTERNAL_ERROR)
+
+@vehycles_bp.route("gv", methods=["POST"])
+@firebase_auth_required
+def get_vehycle():
+    try:
+        from ..models.vehycle_models import Vehycles
+
+        data = request.get_json()
+        uid = data.get("u")
+        organization_uid_fk = data.get("o")
+
+        if (uid is None or uid == "") or (organization_uid_fk is None or organization_uid_fk == ""):
+            return json_response(
+                response=ApiResponse.MISSING_FIELDS
+            )
+
+        vehycle = Vehycles.query.filter_by(uid=uid, organization_uid_fk=organization_uid_fk).first()
+
+        if not vehycle:
+            return json_response(
+                response=ApiResponse.NOT_FOUND,
+            )
+
+        return json_response(
+            response=ApiResponse.OK,
+            data={"vehycle": vehycle.to_dict()}
+        )
+    except Exception as e:
+        current_app.logger.debug("Error fetching vehycle:", e)
+        current_app.logger.debug(traceback.format_exc())
+        db.session.rollback()
+        return json_response(response=ApiResponse.INTERNAL_ERROR)

@@ -1,7 +1,7 @@
 from main import db
 from datetime import datetime
-from flask import Blueprint, request, jsonify
-from ...constants.response import RESPONSE, json_response
+from flask import Blueprint, current_app, request, jsonify
+from ..utils.api_response import ApiResponse, json_response
 from ..auth_firebase.firebase_decorators import firebase_auth_required
 from sqlalchemy.exc import IntegrityError
 import traceback
@@ -55,18 +55,18 @@ def update_sync(upd_type):
     except IntegrityError as ie:
         db.session.rollback()
         # likely unique/foreign key constraint violation
-        print("IntegrityError updating users:", ie)
-        print(traceback.format_exc())
+        current_app.logger.debug("IntegrityError updating users:", ie)
+        current_app.logger.debug(traceback.format_exc())
         return json_response(uid=0, response="DUPLICATE_ENTRY", status_code=409)
     
     except Exception as e:
         db.session.rollback()
-        print("Error updating users:", e)
-        print(traceback.format_exc())
+        current_app.logger.debug("Error updating users:", e)
+        current_app.logger.debug(traceback.format_exc())
         return json_response(uid=0, response="INTERNAL_ERROR", status_code=500) """
     
 @sync_bp.route("/last", methods=["GET"])
-#@firebase_auth_required
+@firebase_auth_required
 def list_users(): 
 
     try:     
@@ -74,13 +74,13 @@ def list_users():
         table = request.args.get("t")
 
         if (table is None or table == ""):
-            return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
+            return json_response(response=ApiResponse.MISSING_FIELDS)
 
         sync_query = SyncQueue.query.filter_by(operation_table=table)
 
         if (table != "app_routes"):
             if (org_uid is None or org_uid == ""):
-                return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
+                return json_response(response=ApiResponse.MISSING_FIELDS)
             else:
                 sync_query = sync_query.filter_by(organization_uid_fk=org_uid)
         
@@ -90,8 +90,7 @@ def list_users():
             data.append(sync_item.to_dict())
         
         return json_response(
-            response = "OK",
-            status_code = 200,
+            response = ApiResponse.OK,
             data = data,
             total = len(data),
             page = 1,
@@ -99,6 +98,6 @@ def list_users():
         )
 
     except Exception as e:
-        print("Error listing users:", e)
-        print(traceback.format_exc())
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+        current_app.logger.debug("Error listing users:", e)
+        current_app.logger.debug(traceback.format_exc())
+        return json_response(response=ApiResponse.INTERNAL_ERROR)

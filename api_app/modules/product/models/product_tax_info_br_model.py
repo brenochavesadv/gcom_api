@@ -3,15 +3,18 @@ from datetime import datetime
 
 
 class ProductTaxInfoBr(db.Model):
-    __bind_key__ = 'sales'  # SQLAlchemy to use the 'product' bind
+    __bind_key__ = 'DB_MAIN'  # SQLAlchemy to use the 'product' bind
     __tablename__ = "aliquotas"
 
     uid = db.Column("aliquotas_id", db.Integer, primary_key=True)
+    product_uid_fk = db.Column("produtos_id_fk", db.Integer, db.ForeignKey("produtos.produtos_id"), nullable=False)
     organization_uid_fk = db.Column("instit_id_fk", db.Integer, nullable=False, default=0)
     description = db.Column("descr", db.String(6), nullable=False, default="")
     bematech = db.Column("bematech", db.String(2), nullable=False, default="")
     value = db.Column("valor", db.Numeric(5, 2), nullable=True)
     updated_at = db.Column("updated_at", db.TIMESTAMP(timezone=True), default=datetime.now)
+
+    products = db.relationship("Product", back_populates="product_tax_info", lazy=True)
 
 def to_dict(self):
     return {
@@ -31,7 +34,7 @@ def __str__(self):
 
 # factory
 
-def create(**kwargs):
+def from_json(**kwargs):
     return ProductTaxInfoBr(
         organization_uid_fk=kwargs.get("organization_uid_fk", 0),
         description=kwargs.get("description", ""),

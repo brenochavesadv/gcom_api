@@ -3,30 +3,42 @@ from flask import json
 from py_smtper import MailManager
 from main import root_path
 
-def smtp_info(json_name='smtp.json'):
+def smtp_info():
     """get smtp info from json file"""
 
-    # Corrige o caminho para buscar em ../../../../security/smtp.json
-    path = os.path.abspath(os.path.join(root_path, 'security', json_name))
-    
-    try:    
-        with open(path, "r", encoding="utf-8") as f:
-            db_info = json.load(f)
-            
-    except FileNotFoundError:
-            raise RuntimeError(f"Database information for {json_name} not found.")
+    smtp_options = os.environ.get("SMTP_OPTIONS")
+    data = None
+
+    if smtp_options:
+        json_path = os.path.expanduser(smtp_options)
+        if not os.path.isabs(json_path):
+            json_path = os.path.join(root_path, json_path)
+        json_path = os.path.abspath(json_path)
+        if os.path.exists(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            try:
+                data = json.loads(smtp_options)
+            except Exception:
+                data = None
+    else:
+        default_path = os.path.join(root_path, "security", "smtp.json")
+        if os.path.exists(default_path):
+            with open(default_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
 
     smtp_info = {}
-    smtp_info["host"] = db_info.get("host") if isinstance(db_info, dict) else None
-    smtp_info["port"] = db_info.get("port") if isinstance(db_info, dict) else None
-    smtp_info["username"] = db_info.get("username") if isinstance(db_info, dict) else None
-    smtp_info["pw"] = db_info.get("pw") if isinstance(db_info, dict) else None
-    smtp_info["sender"] = db_info.get("sender") if isinstance(db_info, dict) else None
-    smtp_info["use_ssl"] = db_info.get("use_ssl") if isinstance(db_info, dict) else None
+    smtp_info["host"] = data.get("host") if isinstance(data, dict) else None
+    smtp_info["port"] = data.get("port") if isinstance(data, dict) else None
+    smtp_info["username"] = data.get("username") if isinstance(data, dict) else None
+    smtp_info["pw"] = data.get("pw") if isinstance(data, dict) else None
+    smtp_info["sender"] = data.get("sender") if isinstance(data, dict) else None
+    smtp_info["use_ssl"] = data.get("use_ssl") if isinstance(data, dict) else None
 
     for key, value in smtp_info.items():
         if not value:
-            raise RuntimeError(f"SMTP configuration '{key}' is missing in {json_name}.")
+            raise RuntimeError(f"SMTP configuration '{key}' is missing in json.")
 
     return MailManager(
         smtp_server=smtp_info["host"],

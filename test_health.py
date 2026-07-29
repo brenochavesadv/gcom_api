@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app
+from flask import Blueprint, current_app, current_app
 import re
 
 health_bp = Blueprint('health', __name__)

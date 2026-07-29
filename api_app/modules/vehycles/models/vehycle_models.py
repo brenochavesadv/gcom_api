@@ -2,21 +2,33 @@ from sqlalchemy import func
 from sqlalchemy.orm import relationship
 from api_app.modules.vehycles.models.fipe_models import FipeBrand
 from main import db
-
-# Enum para tipos de veículos
+from .refueling_model import Refueling
+from ...users.models.organization_model import Organization
+from ...utils.parse_json import ParseJson
 from enum import Enum
 
+# Enum para tipos de veículos
 class VehyclesTypes(Enum):
   cars = 'cars'
   motorcycles = 'motorcycles'
   trucks = 'trucks'
+
+# Enum para tipos de combustível
+class FuelTypes(Enum):
+  gasoline = 'gasoline'
+  diesel = 'diesel'
+  electric = 'electric'
+  hybrid = 'hybrid'
+  ethanol = 'ethanol'
+  premium_gasoline = 'premium_gasoline'
+  natural_gas = 'natural_gas'
 
 # Modelos Python/Flask
 from main import db
 
 class Vehycles(db.Model):
     __tablename__ = 'vehycles'
-    __bind_key__ = 'DB_FROTALL'
+    __bind_key__ = 'DB_MAIN'
     
     uid = db.Column(db.String(36), primary_key=True, unique=True)
     organization_uid_fk = db.Column(db.String(36), nullable=False)
@@ -34,6 +46,7 @@ class Vehycles(db.Model):
     updated_at = db.Column(db.TIMESTAMP, default=func.now(), onupdate=func.now())
 
     brand = db.relationship('FipeBrand', backref=db.backref('vehycles', lazy=True))
+    refueling_order = db.relationship('Refueling', back_populates='vehycle', lazy=True)
             
     @staticmethod
     def from_json(json_data):
@@ -41,7 +54,7 @@ class Vehycles(db.Model):
         return Vehycles(
             uid=json_data.get('uid'),
             organization_uid_fk=json_data.get('organization_uid_fk'),
-            is_active=json_data.get('is_active', 0),
+            is_active=ParseJson.true_to_1(json_data.get('is_active')),
             fipe_code=json_data.get('fipe_code'),
             name=json_data.get('name'),
             nickname=json_data.get('nickname'),
@@ -73,3 +86,53 @@ class Vehycles(db.Model):
             'updated_at': self.updated_at,
             'brand': self.brand.to_dict() if self.brand else None,
         }
+
+class VehycleDrivers(db.Model):
+    __tablename__ = 'vehycle_drivers'
+    __bind_key__ = 'DB_MAIN'
+
+    from ...person.models.person_model import Person
+    
+    uid = db.Column(db.String(36), primary_key=True, unique=True)
+    organization_uid_fk = db.Column(db.String(36), nullable=False)
+    person_uid_fk = db.Column(db.String(36), db.ForeignKey(Person.uid), nullable=False)
+    licence_number = db.Column(db.String(20), nullable=True)
+    licence_expiration_date = db.Column(db.TIMESTAMP, nullable=True)
+    first_licence_date = db.Column(db.TIMESTAMP, nullable=True)
+    is_active = db.Column(db.Integer, default=0)  # 1 for active, 0 for inactive
+    created_at = db.Column(db.TIMESTAMP, default=func.now())
+    updated_at = db.Column(db.TIMESTAMP, default=func.now(), onupdate=func.now())
+
+    person = db.relationship('Person', back_populates='vehycle_drivers')
+    refueling_order = db.relationship('Refueling', back_populates='driver', lazy=True)
+
+    def to_dict(self):
+        return {
+            'uid': self.uid,
+            'organization_uid_fk': self.organization_uid_fk,
+            'person_uid_fk': self.person_uid_fk,
+            'licence_number': self.licence_number,
+            'licence_expiration_date': self.licence_expiration_date,
+            'first_licence_date': self.first_licence_date,
+            'is_active': bool(self.is_active) if self.is_active == 1 else False,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+        }
+
+    @staticmethod
+    def from_json(json_data):
+
+        from ...utils.parse_json import ParseJson
+
+        return VehycleDrivers(
+            uid=json_data.get('uid'),
+            organization_uid_fk=json_data.get('organization_uid_fk'),
+            person_uid_fk=json_data.get('person_uid_fk'),
+            licence_number=json_data.get('licence_number'),
+            licence_expiration_date=json_data.get('licence_expiration_date'),
+            first_licence_date=json_data.get('first_licence_date'),
+            is_active=ParseJson.true_to_1(json_data.get('is_active')),
+            created_at=json_data.get('created_at'),
+            updated_at=json_data.get('updated_at'),     
+            )
+        

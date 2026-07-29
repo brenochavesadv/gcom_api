@@ -23,4 +23,4 @@ with app.app_context():
     ])
 
     db.session.commit()
-    print("Seed concluído com sucesso.")
+    current_app.logger.debug("Seed concluído com sucesso.")

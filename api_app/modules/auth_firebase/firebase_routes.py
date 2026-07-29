@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, current_app, request, jsonify
 
-from api_app.constants.response import json_response
+from api_app.modules.utils.api_response import ApiResponse, json_response
 from .firebase_services import verify_firebase_token, get_user_by_uid, get_user_by_email, notify_user
      
 firebase_bp = Blueprint('firebase', __name__)
@@ -33,16 +33,16 @@ def get_user_info():
         elif mail is not None:
             user_info = get_user_by_email(mail)
         else:
-            return json_response(uid=0, response="MISSING_FIELDS", status_code=400)
+            return json_response(response=ApiResponse.MISSING_FIELDS)
 
         """
         Get user information by Firebase UID
         """
         
         if user_info:
-            return json_response(uid=1, response="OK", status_code=200, data={'user': user_info})
+            return json_response(response=ApiResponse.REQUEST_SUCCESSFUL, data={'user': user_info})
         else:
-            return json_response(uid=0, response="USER_NOT_FOUND", status_code=404)
+            return json_response(response=ApiResponse.NOT_FOUND)
 
     except Exception as e:
-        return json_response(uid=0, response="INTERNAL_ERROR", status_code=500)
+        return json_response(response=ApiResponse.INTERNAL_ERROR)

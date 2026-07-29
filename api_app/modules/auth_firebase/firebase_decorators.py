@@ -1,7 +1,14 @@
+import os
 from functools import wraps
-from flask import request, jsonify
+
+from flask import current_app, jsonify, request
+
 from .firebase_services import verify_firebase_token
 
+
+def _is_production_mode():
+    """Return True when the app is running in production mode."""
+    return os.getenv("FLASK_ENV", current_app.config.get("ENV", "production")) == "production"
 
 def firebase_auth_required(f=None):
     """Decorator to require valid Firebase authentication.
@@ -13,6 +20,12 @@ def firebase_auth_required(f=None):
     def decorator(func):
         @wraps(func)
         def decorated_function(*args, **kwargs):
+            # In non-production environments skip strict Firebase auth to ease local testing
+            if not _is_production_mode():
+                request.firebase_user = None
+                current_app.logger.debug("Non-production environment detected, skipping Firebase authentication.")
+                return func(*args, **kwargs)
+
             auth_header = request.headers.get('Authorization')
 
             if not auth_header or not auth_header.startswith('Bearer '):

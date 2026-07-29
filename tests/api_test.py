@@ -11,7 +11,7 @@ if __name__ == '__main__':
     hostname = socket.gethostname()
     local_ip = socket.gethostbyname(hostname)
     
-    print(f"Local IP: {local_ip}")
-    print(f"Access from network: http://{local_ip}:5000/test")
+    current_app.logger.debug(f"Local IP: {local_ip}")
+    current_app.logger.debug(f"Access from network: http://{local_ip}:5000/test")
     
     app.run(host='0.0.0.0', port=5000, debug=True)

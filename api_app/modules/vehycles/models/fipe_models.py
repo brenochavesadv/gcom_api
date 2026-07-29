@@ -3,12 +3,9 @@ from sqlalchemy.orm import relationship
 from main import db
 import uuid
 
-# Modelos Python/Flask
-from main import db
-
 class FipeSyncControl(db.Model):
     __tablename__ = 'fipe_sync_control'
-    __bind_key__ = 'DB_FROTALL'
+    __bind_key__ = 'DB_MAIN'
 
     uid = db.Column(db.String(36), primary_key=True, unique=True)
     type = db.Column(db.String(10), nullable=False)
@@ -18,7 +15,7 @@ class FipeSyncControl(db.Model):
 
 class FipeBrand(db.Model):
     __tablename__ = 'fipe_brand'
-    __bind_key__ = 'DB_FROTALL'
+    __bind_key__ = 'DB_MAIN'
 
     uid = db.Column(db.String(36), primary_key=True, unique=True)
     fipe_code = db.Column(db.String(6), nullable=True)
@@ -44,7 +41,7 @@ class FipeBrand(db.Model):
 
 class FipeVehycle(db.Model):
     __tablename__ = 'fipe_vehycle'
-    __bind_key__ = 'DB_FROTALL'
+    __bind_key__ = 'DB_MAIN'
 
     uid = db.Column(db.String(36), primary_key=True, unique=True)
     fipe_code = db.Column(db.String(10), nullable=True)

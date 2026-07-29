@@ -77,13 +77,13 @@ def verify_firebase_token(id_token):
         return user_info
         
     except auth.InvalidIdTokenError:
-        print("Invalid ID token")
+        current_app.logger.debug("Invalid ID token")
         return None
     except auth.ExpiredIdTokenError:
-        print("Token has expired")
+        current_app.logger.debug("Token has expired")
         return None
     except Exception as e:
-        print(f"Error verifying token: {str(e)}")
+        current_app.logger.debug(f"Error verifying token: {str(e)}")
         return None
 
 def get_user_by_uid(uid):
@@ -101,10 +101,10 @@ def get_user_by_uid(uid):
         user_record = auth.get_user(uid)
         return user_to_dict(user_record)
     except auth.UserNotFoundError:
-        print(f"User with UID {uid} not found")
+        current_app.logger.debug(f"User with UID {uid} not found")
         return None
     except Exception as e:
-        print(f"Error getting user: {str(e)}")
+        current_app.logger.debug(f"Error getting user: {str(e)}")
         return None
 
 def user_to_dict(user_record):

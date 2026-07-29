@@ -10,7 +10,7 @@ class UserProfiles(db.Model):
     mail = db.Column(db.String(60), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
     display_name = db.Column(db.String(25))
-    is_developer = db.Column(db.Boolean, default=False)
+    is_developer = db.Column(db.SmallInteger, nullable=False, default=0)
     location = db.Column(db.String(4))
     language_code = db.Column(db.String(2))
     iso2_alpha = db.Column(db.String(2))
@@ -21,7 +21,7 @@ class UserProfiles(db.Model):
     updated_at = db.Column(db.DateTime)   
     
     user_organizations = relationship("UserOrganizations", back_populates="user_profiles", foreign_keys="UserOrganizations.user_profiles_uid_fk")
-    user_keys = relationship("UserKeys", back_populates="user_profiles", foreign_keys="UserKeys.user_profiles_uid_fk")
+    user_keys = relationship("UserKeys", back_populates="user_profiles", foreign_keys="UserKeys.user_profiles_uid_fk", uselist=False)
 
     def to_dict(self, join_orgs=False):
         return {  
@@ -29,7 +29,7 @@ class UserProfiles(db.Model):
             'mail': self.mail,
             'name': self.name,
             'display_name': self.display_name,
-            'is_developer': True if self.is_developer == 1 else False,
+            'is_developer': int(self.is_developer) if self.is_developer is not None else 0,
             'location': self.location,
             'language_code': self.language_code,
             'iso2_alpha': self.iso2_alpha,
@@ -39,7 +39,7 @@ class UserProfiles(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'user_organizations': [org.to_dict() for org in self.user_organizations] if join_orgs else None,
-            'user_keys': [keys.to_dict() for keys in self.user_keys] if self.user_keys else None
+            'user_keys': self.user_keys.to_dict() if self.user_keys else None
         }
 
     def from_json(json_data):

@@ -1,58 +1,66 @@
 from datetime import datetime
-from flask import Blueprint, request, jsonify
-from ...auth_firebase.firebase_decorators import firebase_auth_required
-from flasgger import swag_from
-from ..docs.product_docs import product_docs
-from ..models.product_model import Product
-from ..models.product_detail_model import ProductDetail
+from flask import Blueprint, current_app, request
 
+from api_app.modules.utils.api_response import ApiResponse, json_response
+from ...auth_firebase.firebase_decorators import firebase_auth_required
+from sqlalchemy.orm import joinedload, selectinload
+from ..models.product_model import Product
 
 product_bp = Blueprint("product", __name__)
 
-def _get_int_arg(name, default=None):
-    val = request.args.get(name)
-    if val is None or val == "":
-        return default
-    try:
-        return int(val)
-    except (ValueError, TypeError):
-        return default
-
-@product_bp.route("/list", methods=["GET"])
+@product_bp.route("/l", methods=["POST"])
 @firebase_auth_required
 #@swag_from(product_docs["list_product"])
 def list_product():
     try:
-        uid = _get_int_arg("uid", None)
-        description = request.args.get("description")
-        is_active = request.args.get("is_active")
-        barcode = request.args.get("barcode")
-        internal_code = _get_int_arg("internal_code", None)
-        organization_uid = _get_int_arg("organization_uid", None)
-        limit = _get_int_arg("limit", None)
+        data = request.get_json() or {}
+        uid = data.get("u")
+        description = data.get("d")
+        is_active = data.get("ia")
+        is_combo = data.get("ic")
+        barcode = data.get("b")
+        internal_code = data.get("ic", None)
+        organization_uid = data.get("ou", None)
+        main_organization_uid = data.get("mou", None)
+        count_table = True if data.get("ct") == "1" else False  # 1 for True, 0 for False
+        sale_tables = True if data.get("st") == "1" else False  # 1 for True, 0 for False
+        complementary_tables = True if data.get("cyt") == "1" else False  # 1 for True, 0 for False
+        page = int(data.get("p", 1))
+        per_page = int(data.get("pp", 10))
+        order_by = data.get("ob", "description")  # Default order by description
 
-        if organization_uid is None:
-            return jsonify({"error": "Entity ID is required"}), 400
-
-        # Query full Product instances so we can call to_dict()
         query = Product.query
 
-        if uid is not None:
+        if uid not in (None, ""):
             query = query.filter(Product.uid == uid)
-        if description:
+        if description not in (None, ""):
             query = query.filter(Product.description.ilike(f"%{description}%"))
-        if is_active is not None:
-            is_active_val = 2 if str(is_active).lower() in ["true", "1"] else 1
-            query = query.filter(Product.is_active == is_active_val)
-        if barcode:
+        if is_active not in (None, ""):
+            query = query.filter(Product.is_active == is_active)
+        if barcode not in (None, ""):
             query = query.filter(Product.barcode == barcode)
-        if internal_code is not None:
+        if internal_code not in (None, ""):
             query = query.filter(Product.internal_code == internal_code)
+        if main_organization_uid not in (None, ""):
+            query = query.filter(Product.main_organization_uid_fk == main_organization_uid)
+            
+        query = query.filter(Product.organization_uid_fk == organization_uid).order_by(getattr(Product, order_by).asc())
 
-        query = query.filter(Product.organization_uid_fk == organization_uid).order_by(Product.description.asc())
+        if count_table:
+            query = query.options(selectinload(Product.product_count))
 
-        page = _get_int_arg("page", 1)
-        per_page = _get_int_arg("per_page", limit if limit is not None else 10)
+        if sale_tables:
+            query = query.options(selectinload(Product.product_brand))
+            query = query.options(selectinload(Product.product_detail))
+            query = query.options(selectinload(Product.product_category))
+            #query = query.options(selectinload(Product.product_inventory))
+            query = query.options(selectinload(Product.product_tax_info))
+            query = query.options(selectinload(Product.product_unit))
+            
+        if complementary_tables:
+            query = query.options(selectinload(Product.product_expiry))
+            query = query.options(selectinload(Product.product_supplier))
+            
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
         items = []
@@ -67,52 +75,18 @@ def list_product():
                     "is_active": getattr(product, "is_active", None),
                 })
 
-        return jsonify({
-            "items": items,
-            "total": pagination.total,
-            "page": pagination.page,
-            "pages": pagination.pages
-        })
+        return json_response(
+                    response = ApiResponse.REQUEST_SUCCESSFUL,
+                    data = data,
+                    total = pagination.total,
+                    page = pagination.page,
+                    pages = pagination.pages
+                )
 
     except Exception as e:
         import traceback
-        print(f"Product list error: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
-
-@product_bp.route("/detail", methods=["GET"])
-@firebase_auth_required
-#@swag_from(product_docs["get_product"])
-def detail_product():
-    try:
-        uid = _get_int_arg("uid", None)
-        is_active = request.args.get("is_active")
-        organization_uid = _get_int_arg("organization_uid", None)
-
-        if organization_uid is None:
-            return jsonify({"error": "Entity ID is required"}), 400
-        if uid is None:
-            return jsonify({"error": "ID is required"}), 400
-
-        # Use filter(), not filter_by(), when passing expressions
-        query = ProductDetail.query.filter(
-            ProductDetail.product_id_fk == uid,
-            ProductDetail.organization_uid_fk == organization_uid
-        )
-
-        if is_active is not None:
-            is_active_val = 2 if str(is_active).lower() in ["true", "1"] else 1
-            query = query.filter(ProductDetail.is_active == is_active_val)
-
-        product_detail = query.first()
-
-        if not product_detail:
-            return jsonify({"error": "Product not found"}), 404
-
-        return jsonify({
-            "item": product_detail.to_dict() if hasattr(product_detail, "to_dict") else {},
-        })
-
-    except Exception as e:
-        import traceback
-        print(f"Product get error: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.debug(f"Product list error: {traceback.format_exc()}")
+        return json_response(
+            response=ApiResponse.INTERNAL_ERROR,
+            data={"error": str(e)}
+        ), 500

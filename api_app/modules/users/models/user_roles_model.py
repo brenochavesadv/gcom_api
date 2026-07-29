@@ -33,15 +33,15 @@ class UserRoles(db.Model):
 
 
     @staticmethod
-    def get_data(data):
+    def from_json(data):
         if not isinstance(data, dict):
             data = {}
 
-        return {
-            'uid': data.get('uid'),
-            'main_organization_uid_fk': data.get('main_organization_uid_fk'),
-            'name': data.get('name'),
-            'description': data.get('description'),
-            'allowed_app_routes': data.get('allowed_app_routes'),
-            'sync_status': data.get('sync_status', 'PENDING')
-        }
+        return UserRoles(
+            uid=data.get('uid'),
+            main_organization_uid_fk=data.get('main_organization_uid_fk'),
+            name=data.get('name'),
+            description=data.get('description'),
+            allowed_app_routes=data.get('allowed_app_routes'),
+            sync_status=data.get('sync_status', 'PENDING')
+        )

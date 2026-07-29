@@ -7,19 +7,18 @@ class AddressUnit(db.Model):
     __bind_key__ = 'DB_MAIN' 
     __tablename__ = "address_unit"
 
-    uid = db.Column(db.String(10), nullable=True, primary_key=True, comment='based on US Postal Service Standard abbreviation')
-    description_en_us = db.Column(db.String(20))
-    abbrev_en_us = db.Column(db.String(10), comment='abbreviation based on US Postal Service Standard abbreviation')
-    pt_br = db.Column(db.String(20), nullable=True, comment='Portuguese (Brazil) full name')
-    abbrev_pt_br = db.Column(db.String(10), nullable=True, comment='Portuguese (Brazil) abbreviation')
+    uid = db.Column(db.Integer, nullable=False, primary_key=True)
+    iso2alpha = db.Column(db.String(2), nullable=False)
+    unit = db.Column(db.String(20), nullable=False)
+    abbrev = db.Column(db.String(10), nullable=False)
     
+   
     def to_dict(self):
-        print("Convert model to dictionary using direct attribute access")
+        """Convert model to dictionary using direct attribute access"""
         result = {
             'uid': self.uid,
-            'description_en_us': self.description_en_us,
-            'abbrev_en_us': self.abbrev_en_us,
-            'pt_br': self.pt_br,
-            'abbrev_pt_br': self.abbrev_pt_br
+            'iso2alpha': self.iso2alpha,
+            'suffix': self.unit,
+            'abbrev': self.abbrev,
         }
         return result

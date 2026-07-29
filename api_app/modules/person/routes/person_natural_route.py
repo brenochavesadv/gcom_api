@@ -1,12 +1,15 @@
+import traceback
 from datetime import datetime, timezone
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, current_app, request, jsonify
+from sqlalchemy import or_
+
+from api_app.modules.utils.api_response import json_response, ApiResponse
 from ..models.person_model import Person
 from ..models.person_natural_model import PersonNatural
 from ..models.phone_model import Phone
 from ..models.mail_model import Mail
 from ..models.address_model import Address  
 from ..docs.person_natural import person_natural_docs
-from ...utils.error_codes import ErrorCodes
 from main import db
 from ...auth_firebase.firebase_decorators import firebase_auth_required
 from flasgger import swag_from
@@ -17,184 +20,83 @@ from api_app.modules.person.models import person_model
 person_natural_bp = Blueprint("personnatural", __name__)
 
 @person_natural_bp.route("/list", methods=["POST"])
-#@firebase_auth_required
+@firebase_auth_required
 @swag_from(person_natural_docs["list_person_natural"])
 def list_person_natural():
     data = request.get_json()
-    return get_person(all_data=True, data=data)
+    return get_person(data=data)
 
-@person_natural_bp.route("/new", methods=["POST"])
+@person_natural_bp.route("/ui", methods=["POST"])
 @firebase_auth_required
-@swag_from(person_natural_docs["create_person_natural"])
-def new_person_natural():
+def upinsert_person_natural():
     try:
         data = request.get_json()
-        person_natural_data = data.get("person_natural", {})
-                
-        # Validate required fields and report which are missing
-        required_fields = ["organization_uid_fk", "name", "id_number"]
-        missing = [f for f in required_fields if not person_natural_data.get(f)]
-        if missing:
-            return jsonify({
-                "uid": 0,
-                "message": "Missing required fields for person natural creation: " + ", ".join(missing),
-                "error_code": 2003
-            }), 400
+        current_app.logger.debug("Received person natural data:", data)
 
-        # Check for duplicates BEFORE creating the object
-        from sqlalchemy import or_
-        # Normalize empty organization UID to None to avoid accidental empty-string matches
-        org_uid = person_natural_data.get("organization_uid_fk") or None
-        existing = Person.query.filter_by(
-            organization_uid_fk=org_uid
-        ).filter(
-            or_(
-                Person.id_number == person_natural_data.get("id_number"),
-                Person.name == person_natural_data.get("name")
+        _person_data = Person.from_json(data)
+        _pn_data = PersonNatural.from_json(data)
+
+        if (_person_data.main_organization_uid_fk is None or _person_data.main_organization_uid_fk == "") or (_person_data.name is None or _person_data.name == ""):
+            return json_response(
+                response="MISSING_FIELDS"
             )
-        ).first()
 
-        if existing:
-            return jsonify({
-                "message": "(" + str(ErrorCodes.DUPLICATE_ENTRY.code) + ")" + str(ErrorCodes.DUPLICATE_ENTRY.message),
-            }), ErrorCodes.DUPLICATE_ENTRY.http_status
+        if not _person_data.uid:
+            # This is a create operation, check for duplicates first
+            existing = Person.query.filter_by(
+                main_organization_uid_fk=_person_data.main_organization_uid_fk
+            ).filter(
+                or_(
+                    Person.id_number == _person_data.id_number,
+                    Person.name == _person_data.name
+                )
+            ).first()
 
-        # Create objects using factory
-        person = Person.from_json(person_natural_data)
-        person.person_uid = None  # Ensure a new record is created
+            if existing:
+                return json_response(
+                    response=ApiResponse.DUPLICATE_ENTRY
+                )
 
-        db.session.add(person)
-        db.session.flush()
+        _person = Person.query.filter_by(uid=_person_data.uid).first()
+     
+        if _person: # Update existing record
+            _person.name = _person_data.name
+            _person.id_number = _person_data.id_number
+            _person.is_active = _person_data.is_active
+            _person.is_supplier = _person_data.is_supplier
+            _person.iso2alpha = _person_data.iso2alpha
+            _person.updated_at = datetime.now(timezone.utc)
+            persisted_person = _person
+        else: # Create new record
+            _person_data.created_at = datetime.now(timezone.utc)
+            _person_data.updated_at = datetime.now(timezone.utc)
+
+            db.session.add(_person_data)
+            persisted_person = _person_data
+
+        db.session.flush()  # Flush to get the person ID for FK
+
+        _pn_data.person_uid_fk = persisted_person.uid
+
+        _person_natural = PersonNatural.query.filter_by(person_uid_fk= _pn_data.person_uid_fk).first()
+
+        if _person_natural:
+             # Update the existing managed instance from the temporary data object
+            _person_natural.update_from(_pn_data)
+            persisted_pn = _person_natural 
+        else:
+            db.session.add(_pn_data)
+            persisted_pn = _pn_data
         
-        person_natural = PersonNatural.from_json(person.person_uid, person_natural_data)
-        
-        db.session.add(person_natural)
         db.session.commit()
-        
-        return jsonify({
-            "uid": person.person_uid,
-            "message": "Person natural created successfully",
-            "person": person.to_dict(),
-            "person_natural": person_natural.to_dict()
-        }), 201
+
+        return json_response(
+            response=ApiResponse.UPINSERTED_SUCCESSFULLY,
+            data={"person": persisted_person.to_dict(), "person_natural": persisted_pn.to_dict()}
+        )
 
     except Exception as e:
+        current_app.logger.debug("Error upinserting person natural:", e)
+        current_app.logger.debug(traceback.format_exc())
         db.session.rollback()
-        import traceback
-        print(f"Person natural creation error: {traceback.format_exc()}")
-        return jsonify({
-            "uid": 0,
-            "error": str(e),
-            "error_code": 500
-        }), 500
-
-    
-@person_natural_bp.route("/update", methods=["PUT"])
-#@firebase_auth_required
-@swag_from(person_natural_docs["update_person_natural"])
-def update_person_natural():
-    try:
-        data = request.get_json()
-        person_natural_data = data.get("person_natural", {})
-        
-        # Validate required fields and report which are missing
-        required_fields = ["uid", "name", "id_number"]
-        missing = [f for f in required_fields if not person_natural_data.get(f)]
-        if missing:
-            return jsonify({
-                "uid": 0,
-                "message": "Missing required fields for person natural update: " + ", ".join(missing),
-                "error_code": 2003
-            }), 400
-
-        
-        person_data = Person.from_json(person_natural_data)
-
-        # Check if Person exists
-        person_record = Person.query.filter_by(uid=person_data.uid).first()
-        if not person_record:
-            return jsonify({
-                "uid": 0,
-                "message": f"Person with ID {person_data.uid} not found",
-                "error_code": 3001
-            }), 404
-
-        # Update the only necessary Person fields 
-        person_record.is_active = person_data.is_active
-        person_record.is_supplier = person_data.is_supplier
-        person_record.name = person_data.name
-        person_record.id_number = person_data.id_number
-        person_record.credit = person_data.credit
-        person_record.balance = person_data.balance
-
-        # Build a temporary PersonNatural object from input to extract values
-        temp_person_natural = PersonNatural.from_json(person_data.uid, person_natural_data)
-        person_natural_record = PersonNatural.query.filter_by(person_uid_fk=person_data.uid).first()
-        # Check if PersonNatural exists
-        if not person_natural_record:
-            return jsonify({
-                "uid": 0,
-                "message": f"PersonNatural with Person ID {person_data.uid} not found",
-                "error_code": 3001
-            }), 404
-
-        # Update only mutable fields. Do not touch PK/FK identity columns.
-        updatable_fields = [
-            "id_card",
-            "id_issuer",
-            "birth_country",
-            "birth_city",
-            "birth_date",
-            "pronoun",
-            "nickname",
-            "gender",
-            "father_name",
-            "mother_name",
-            "profession",
-            "professional_id",
-            "salary",
-            "employer",
-            "employer_contact",
-            "cnpj",
-            "iest",
-            "imun",
-            "emprend",
-            "other_incomes",
-            "incomes_sum",
-            "file_income_tax",
-            "marital_status",
-            "children",
-            "alimony",
-            "spouse",
-            "spouse_id_card",
-            "spouse_profession",
-            "spouse_employer",
-            "spouse_incomes",
-            "spouse_phone",
-            "spouse_email",
-        ]
-        for field in updatable_fields:
-            setattr(person_natural_record, field, getattr(temp_person_natural, field))
-
-        # Commit all changes
-        db.session.commit()
-
-        # Refresh to get actual database state
-        db.session.refresh(person_natural_record)
-
-        return jsonify({
-            "uid": person_data.uid,
-            "message": "Person natural updated successfully",
-            "person": person_record.to_dict(),
-            "person_natural": person_natural_record.to_dict()
-        }), 200
-
-    except Exception as e:
-        db.session.rollback()  # Important: rollback on error
-        import traceback
-        print(f"Person natural update error: {traceback.format_exc()}")
-        return jsonify({
-            "uid": 0,
-            "error": str(e),
-            "error_code": 500
-        }), 500
+        return json_response(response=ApiResponse.INTERNAL_ERROR)

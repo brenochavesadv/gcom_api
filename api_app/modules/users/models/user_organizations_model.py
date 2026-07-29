@@ -43,12 +43,12 @@ class UserOrganizations(db.Model):
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'allowed_app_routes': self.allowed_app_routes,
-            'organization': self.organization.to_dict(),
+            'organization': self.organization.to_dict() if self.organization else None,
         }
 
     def from_json(json_data):
         allowed_app_routes = str(json_data.get('allowed_app_routes', ''))
-        allowed_app_routes = allowed_app_routes.replace('[', '').replace(']', '').replace('"', '').replace("'", "")
+        allowed_app_routes = allowed_app_routes.replace('[', '').replace(']', '').replace('"', '').replace("'", "").replace(" ", "")
         return UserOrganizations(
             uid=json_data.get('uid'),
             user_profiles_uid_fk=json_data.get('user_profiles_uid_fk'),

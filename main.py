@@ -1,12 +1,14 @@
 # Keep `main.py` focused on the application factory and registration.
 # Do not create a module-level `app` here to avoid import-time side effects.
 
-from flask import Flask, app
+from flask import Flask
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flasgger import Swagger
+from dotenv import dotenv_values
+import logging
 
 swagger_template = {
     "swagger": "2.0",
@@ -27,18 +29,27 @@ swagger_template = {
 
 db = SQLAlchemy()
 jwt = JWTManager()
-swagger = Swagger(template=swagger_template) # adds authorization header to all endpoints 
-#swagger = Swagger()
+swagger = Swagger(template=swagger_template)  # adds authorization header to all endpoints
 
+# Do not touch `app.logger` at import time. The real logger exists only after create_app().
 import sys
 import os
 
+logging.basicConfig(level=logging.DEBUG)
+
 # Variável global para o caminho da raiz do projeto
 root_path = os.path.abspath(os.path.dirname(__file__))
+env_values = dotenv_values(dotenv_path=os.path.join(root_path, ".env"))
+environment_mode = env_values.get("FLASK_ENV", "production")
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object("config.Config")
+
+    if app.debug:
+        app.logger.setLevel(logging.DEBUG)
+    else:
+        app.logger.setLevel(logging.INFO)
 
     # Ensure api_app is discoverable
     sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -52,13 +63,10 @@ def create_app():
     from api_app.modules.person.routes.address_route import address_bp
     app.register_blueprint(address_bp, url_prefix='/address')
 
-    from api_app.modules.utils.error_codes_route import errors_bp
-    app.register_blueprint(errors_bp, url_prefix='/errors')
-
     from api_app.modules.auth_firebase.firebase_services import init_app as init_firebase
     init_firebase(app)
 
-    from api_app.modules.vehycles.vehycles_routes import vehycles_bp
+    from api_app.modules.vehycles.routes.vehycles_routes import vehycles_bp
     app.register_blueprint(vehycles_bp, url_prefix='/vehycles')
 
     from test_health import health_bp
@@ -96,9 +104,9 @@ def create_app():
  
     from api_app.modules.users.routes.user_organizations_route import user_organizations_bp
     app.register_blueprint(user_organizations_bp, url_prefix='/u_orgs')
- 
-    from api_app.modules.users.routes.user_route import users_bp
-    app.register_blueprint(users_bp, url_prefix='/users')
+    
+    from api_app.modules.users.routes.user_profiles_route import user_profiles_bp
+    app.register_blueprint(user_profiles_bp, url_prefix='/profiles')
     
     from api_app.modules.users.routes.user_roles_route import users_roles_bp
     app.register_blueprint(users_roles_bp, url_prefix='/roles')

@@ -3,26 +3,26 @@ from main import db
 from sqlalchemy.orm import relationship
 
 class ProductExpiry(db.Model):
-    __bind_key__ = 'sales'  # SQLAlchemy to use the 'product' bind
+    __bind_key__ = 'DB_MAIN'  # SQLAlchemy to use the 'product' bind
     __tablename__ = "product_expiry"
 
     uid = db.Column(db.String(14), primary_key=True)
-    product_uid_fk = db.Column(db.String(36), db.ForeignKey('produtos.uid'), nullable=False)
+    product_uid_fk = db.Column(db.Integer, db.ForeignKey("produtos.produtos_id"), nullable=False)
     organization_uid_fk = db.Column(db.Integer, nullable=False)
-    expiry_date = db.Column(db.Date, nullable=True)
+    expiration_date = db.Column(db.Date, nullable=True)
+    sync_status = db.Column("sync_status", db.String(10), nullable=True, default="PENDING")
     created_at = db.Column(db.TIMESTAMP(timezone=True), nullable=False, default=datetime.now)
-    updated_at = db.Column(db.TIMESTAMP(timezone=True), nullable=True, onupdate=datetime.now)
 
-    product = relationship("Product", back_populates="product_expiry", foreign_keys=[product_uid_fk])
+    products = db.relationship("Product", back_populates="product_expiry", lazy=True)
 
     def to_dict(self):
         return {
             'uid': self.uid,
             'product_uid_fk': self.product_uid_fk,
             'organization_uid_fk': self.organization_uid_fk,
-            'expiry_date': self.expiry_date,
+            'expiration_date': self.expiration_date,
+            'sync_status': self.sync_status,
             'created_at': self.created_at,
-            'updated_at': self.updated_at
         }
     
     def __repr__(self):
