@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gcom-flask-monorepo"
+version = "0.1.0"
+description = "GCOM Flask backend monorepo"
+readme = "README.md"
+license = { text = "Proprietary" }
+authors = [{ name = "GCOM" }]
+requires-python = "3.9"
+dependencies = [
+    "Flask>=2.3",
+    "Flask-Cors>=4.0",
+    "Flask-JWT-Extended>=4.5",
+    "Flask-Migrate>=4.0",
+    "Flask-SQLAlchemy>=3.1",
+    "flasgger>=0.9.7",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+]
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[tool.setuptools.package-data]
+backend = ["**/*.json", "**/*.yaml", "**/*.yml"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["."]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = ["backend/instance", "backend/security"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+

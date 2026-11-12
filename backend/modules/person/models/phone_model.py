@@ -1,0 +1,58 @@
+from datetime import datetime
+from pytz import UTC
+from backend.apps.commerciall_api.main import db
+from sqlalchemy.orm import relationship
+
+from backend.modules.utils.parse_json import ParseJson
+
+class Phone(db.Model):
+    __bind_key__ = 'DB_MAIN' 
+    __tablename__ = "telefones"
+    
+    uid = db.Column('telefones_id', db.Integer, primary_key=True)
+    person_uid_fk = db.Column('pescod_id_fk', db.Integer, db.ForeignKey('pescod.pescod_id'))
+    is_active = db.Column('situacao', db.SmallInteger, nullable=False, default=0, comment='1=active, 0=not')
+    is_main = db.Column('principal', db.SmallInteger, nullable=False, default=0, comment='1=main, 0=not')
+    phone = db.Column('tel', db.String(20))
+    iso2alpha = db.Column(db.String(3))
+    phone_type = db.Column(db.String(12))
+    observation = db.Column(db.String(30))
+    created_at = db.Column('data_criacao', db.TIMESTAMP(timezone=True), default=db.func.now())
+    updated_at = db.Column('data_atualizacao', db.TIMESTAMP(timezone=True), default=db.func.now())
+
+    person = relationship("Person", back_populates="phones", foreign_keys=[person_uid_fk])
+    
+    def to_dict(self):
+        """Convert model to dictionary using direct attribute access"""
+        return {    
+            'uid': self.uid,
+            'person_uid_fk': self.person_uid_fk,
+            'is_active': ParseJson.return_int_for_true(self.is_active, 1),
+            'is_main': ParseJson.return_int_for_true(self.is_main, 1),
+            'phone': self.phone,
+            'iso2alpha': self.iso2alpha,
+            'phone_type': self.phone_type,
+            'observation': self.observation,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+        }
+
+    def from_json(data):
+        return Phone(
+            uid=int(data.get("uid")) if data.get("uid") else None,
+            person_uid_fk=int(data.get("person_uid_fk")) if data.get("person_uid_fk") else None,
+            is_active=1 if data.get("is_active") else 0,
+            is_main=1 if data.get("is_main") else 0,
+            phone=data.get("phone"),
+            iso2alpha=data.get("iso2alpha"),
+            phone_type=data.get("phone_type"),
+            observation=data.get("observation"),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC)
+        )
+
+    def __repr__(self):
+        return f"<Phone {self.uid} - {self.phone}>"
+    
+    def __str__(self):
+        return f"Phone(uid={self.uid}, phone={self.phone}, person_uid_fk={self.person_uid_fk})"        
